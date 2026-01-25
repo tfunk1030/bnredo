@@ -186,7 +186,8 @@ export function calculateWindEffect(params: WindCalculationParams): WindCalculat
     const windEffect = -windCarryChange;
     const lateralEffect = windResult.lateralMovement;
 
-    const playsLikeDistance = targetYardage - windCarryChange;
+    // Plays like distance includes BOTH environmental and wind adjustments
+    const playsLikeDistance = targetYardage + envEffect + windEffect;
 
     logger.debug('Wind calculation completed', {
       club: clubName,
