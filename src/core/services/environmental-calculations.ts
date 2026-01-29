@@ -39,9 +39,15 @@ export class EnvironmentalCalculator {
            (vaporPressure * 100) / (461.495 * (tempC + 273.15));
   }
 
+  // WMO-recommended Magnus constants for saturation vapor pressure
+  private static readonly MAGNUS_A = 6.1121;
+  private static readonly MAGNUS_B = 17.502;
+  private static readonly MAGNUS_C = 240.97;
+
   static calculateVaporPressure(tempF: number, humidity: number): number {
     const tempC = (tempF - 32) * 5/9;
-    const saturationPressure = 6.1078 * Math.exp((17.27 * tempC) / (tempC + 237.3));
+    // WMO Magnus equation: more accurate across typical golf temperature range
+    const saturationPressure = this.MAGNUS_A * Math.exp((this.MAGNUS_B * tempC) / (tempC + this.MAGNUS_C));
     return (humidity / 100) * saturationPressure;
   }
 

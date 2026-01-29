@@ -1,7 +1,31 @@
 import * as React from 'react';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WeatherData, fetchWeather, getCachedWeather, getDefaultWeather } from '@/src/services/weather-service';
+import { useUserPreferences } from './UserPreferencesContext';
+import {
+  NormalizedWeather,
+  WeatherSettings,
+  DEFAULT_WEATHER_SETTINGS,
+  fetchWeather as fetchWeatherOrchestrated,
+  getCachedWeather as getOrchCachedWeather,
+  WeatherError,
+} from '@/src/services/weather';
+
+// Re-export the old interface for backward compatibility
+export interface WeatherData {
+  temperature: number;
+  humidity: number;
+  pressure: number;
+  windSpeed: number;
+  windDirection: number;
+  windGust: number;
+  altitude: number;
+  locationName: string;
+  latitude: number;
+  longitude: number;
+  observationTime: string;
+  isManualOverride: boolean;
+}
 
 interface WeatherContextType {
   weather: WeatherData | null;
@@ -16,20 +40,65 @@ const WeatherContext = React.createContext<WeatherContextType | null>(null);
 
 const MANUAL_OVERRIDE_KEY = 'weather_manual_override';
 
+// Convert NormalizedWeather to legacy WeatherData format
+function toWeatherData(weather: NormalizedWeather): WeatherData {
+  return {
+    temperature: weather.temperature,
+    humidity: weather.humidity,
+    pressure: weather.pressure,
+    windSpeed: weather.windSpeed,
+    windDirection: weather.windDirection,
+    windGust: weather.windGust,
+    altitude: weather.altitude,
+    locationName: weather.locationName,
+    latitude: weather.latitude,
+    longitude: weather.longitude,
+    observationTime: weather.observationTime,
+    isManualOverride: weather.isManualOverride,
+  };
+}
+
+function getDefaultWeather(): WeatherData {
+  return {
+    temperature: 72,
+    humidity: 50,
+    pressure: 1013,
+    windSpeed: 10,
+    windDirection: 0,
+    windGust: 15,
+    altitude: 0,
+    locationName: 'Default',
+    latitude: 0,
+    longitude: 0,
+    observationTime: new Date().toISOString(),
+    isManualOverride: true,
+  };
+}
+
 export function WeatherProvider({ children }: { children: React.ReactNode }) {
+  const { preferences } = useUserPreferences();
   const [weather, setWeather] = React.useState<WeatherData | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isOffline, setIsOffline] = React.useState(false);
 
+  // Build settings from user preferences
+  const weatherSettings: WeatherSettings = React.useMemo(() => ({
+    ...DEFAULT_WEATHER_SETTINGS,
+    enableMultiProvider: preferences.weatherProvider?.enableMultiProvider ?? false,
+    primaryProvider: preferences.weatherProvider?.primaryProvider ?? 'openmeteo',
+    fallbackOrder: preferences.weatherProvider?.fallbackOrder ?? ['tomorrow', 'openmeteo'],
+  }), [preferences.weatherProvider]);
+
   React.useEffect(() => {
     loadWeather();
-  }, []);
+  }, [weatherSettings.enableMultiProvider]);
 
   const loadWeather = async () => {
     setIsLoading(true);
     setError(null);
 
+    // Check for manual override first
     try {
       const manualOverride = await AsyncStorage.getItem(MANUAL_OVERRIDE_KEY);
       if (manualOverride) {
@@ -45,12 +114,14 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
+      // Request location permission
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
-        const cached = await getCachedWeather();
+        // Try to get cached weather
+        const cached = await getOrchCachedWeather();
         if (cached) {
-          setWeather(cached);
+          setWeather(toWeatherData(cached));
           setIsOffline(true);
         } else {
           setWeather(getDefaultWeather());
@@ -60,29 +131,40 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Get current location
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
 
-      const weatherData = await fetchWeather(
+      // Fetch weather using orchestrator
+      const weatherData = await fetchWeatherOrchestrated(
         location.coords.latitude,
-        location.coords.longitude
+        location.coords.longitude,
+        weatherSettings.enableMultiProvider,
+        weatherSettings
       );
 
-      setWeather(weatherData);
+      setWeather(toWeatherData(weatherData));
       setIsOffline(false);
       setError(null);
     } catch (err) {
       console.error('Weather fetch error:', err);
 
-      const cached = await getCachedWeather();
+      // Try to get cached weather
+      const cached = await getOrchCachedWeather();
       if (cached) {
-        setWeather(cached);
+        setWeather(toWeatherData(cached));
         setIsOffline(true);
         setError('Using cached weather data');
       } else {
         setWeather(getDefaultWeather());
-        setError('Unable to fetch weather');
+
+        // Provide more specific error message
+        if (err instanceof WeatherError) {
+          setError(err.message);
+        } else {
+          setError('Unable to fetch weather');
+        }
       }
     } finally {
       setIsLoading(false);
@@ -95,7 +177,7 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateManualWeather = async (updates: Partial<WeatherData>) => {
-    const newWeather = {
+    const newWeather: WeatherData = {
       ...(weather || getDefaultWeather()),
       ...updates,
       isManualOverride: true,

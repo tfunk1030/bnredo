@@ -13,6 +13,11 @@ export const mockPreferences: UserPreferences = {
   windSpeedUnit: 'mph',
   handPreference: 'right',
   isPremium: false,
+  weatherProvider: {
+    enableMultiProvider: false,
+    primaryProvider: 'openmeteo',
+    fallbackOrder: ['tomorrow', 'openmeteo'],
+  },
 };
 
 /**

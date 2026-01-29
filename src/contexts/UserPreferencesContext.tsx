@@ -1,12 +1,22 @@
 import * as React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export type WeatherProviderOption = 'tomorrow' | 'openmeteo';
+
+export interface WeatherProviderSettings {
+  enableMultiProvider: boolean;
+  primaryProvider: WeatherProviderOption;
+  fallbackOrder: WeatherProviderOption[];
+}
+
 export interface UserPreferences {
   distanceUnit: 'yards' | 'meters';
   temperatureUnit: 'fahrenheit' | 'celsius';
   windSpeedUnit: 'mph' | 'kmh';
   handPreference: 'right' | 'left';
   isPremium: boolean;
+  // Weather provider settings (opt-in feature)
+  weatherProvider: WeatherProviderSettings;
 }
 
 interface UserPreferencesContextType {
@@ -21,6 +31,11 @@ const defaultPreferences: UserPreferences = {
   windSpeedUnit: 'mph',
   handPreference: 'right',
   isPremium: false,
+  weatherProvider: {
+    enableMultiProvider: false,  // Opt-in: use Tomorrow.io → Open-Meteo fallback
+    primaryProvider: 'openmeteo',
+    fallbackOrder: ['tomorrow', 'openmeteo'],
+  },
 };
 
 const STORAGE_KEY = 'user_preferences';
