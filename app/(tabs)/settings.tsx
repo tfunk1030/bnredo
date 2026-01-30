@@ -209,62 +209,97 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Weather Data</Text>
 
-          <View style={styles.optionRow}>
-            <View style={styles.weatherProviderInfo}>
-              <Cloud color={colors.textSecondary} size={18} />
-              <Text style={styles.optionLabel}>Use Backup Provider</Text>
-            </View>
-            <Switch
-              value={preferences.weatherProvider?.enableMultiProvider ?? false}
-              onValueChange={(value) => updatePreferences({
-                weatherProvider: {
-                  ...preferences.weatherProvider,
-                  enableMultiProvider: value,
-                }
-              })}
-              trackColor={{ false: colors.border, true: colors.primaryDark }}
-              thumbColor={preferences.weatherProvider?.enableMultiProvider ? colors.primary : colors.textMuted}
-              accessibilityRole="switch"
-              accessibilityLabel="Enable backup weather provider"
-              accessibilityState={{ checked: preferences.weatherProvider?.enableMultiProvider ?? false }}
-            />
-          </View>
-          <Text style={styles.hint}>
-            Automatically falls back to secondary provider if primary fails
-          </Text>
-
           {(() => {
             try {
               const status = getProviderStatus();
+              const isTomorrowConfigured = status.tomorrow.configured;
+              
               return (
-                <View style={styles.providerStatus}>
-                  <View style={styles.providerRow}>
-                    <View style={[styles.statusDot, { backgroundColor: colors.primary }]} />
-                    <Text style={styles.providerName}>Open-Meteo</Text>
-                    <Text style={styles.providerLabel}>Free • Always Available</Text>
+                <>
+                  {/* Primary Provider Selection */}
+                  {renderOption(
+                    'Primary Provider',
+                    preferences.weatherProvider?.primaryProvider ?? 'openmeteo',
+                    [
+                      { label: 'Open-Meteo', value: 'openmeteo' },
+                      { label: 'Tomorrow.io', value: 'tomorrow' },
+                    ].filter(opt => opt.value === 'openmeteo' || isTomorrowConfigured),
+                    value => updatePreferences({
+                      weatherProvider: {
+                        ...preferences.weatherProvider,
+                        primaryProvider: value as 'openmeteo' | 'tomorrow',
+                      }
+                    })
+                  )}
+                  <Text style={styles.hint}>
+                    {preferences.weatherProvider?.primaryProvider === 'tomorrow' 
+                      ? 'Using Tomorrow.io for hyperlocal weather data'
+                      : 'Using Open-Meteo (free, no API key required)'}
+                  </Text>
+
+                  {/* Backup Provider Toggle */}
+                  <View style={[styles.optionRow, { marginTop: spacing.md }]}>
+                    <View style={styles.weatherProviderInfo}>
+                      <Cloud color={colors.textSecondary} size={18} />
+                      <Text style={styles.optionLabel}>Enable Fallback</Text>
+                    </View>
+                    <Switch
+                      value={preferences.weatherProvider?.enableMultiProvider ?? false}
+                      onValueChange={(value) => updatePreferences({
+                        weatherProvider: {
+                          ...preferences.weatherProvider,
+                          enableMultiProvider: value,
+                        }
+                      })}
+                      trackColor={{ false: colors.border, true: colors.primaryDark }}
+                      thumbColor={preferences.weatherProvider?.enableMultiProvider ? colors.primary : colors.textMuted}
+                      accessibilityRole="switch"
+                      accessibilityLabel="Enable fallback weather provider"
+                      accessibilityState={{ checked: preferences.weatherProvider?.enableMultiProvider ?? false }}
+                    />
                   </View>
-                  <View style={styles.providerRow}>
-                    <View style={[
-                      styles.statusDot,
-                      { backgroundColor: status.tomorrow.configured ? colors.accent : colors.textMuted }
-                    ]} />
-                    <Text style={styles.providerName}>Tomorrow.io</Text>
-                    <Text style={styles.providerLabel}>
-                      {status.tomorrow.configured ? 'Premium • Configured' : 'Not Configured'}
-                    </Text>
-                  </View>
-                  {!status.tomorrow.configured && (
-                    <View style={styles.configHint}>
-                      <AlertCircle color={colors.textMuted} size={12} />
-                      <Text style={styles.configHintText}>
-                        Add EXPO_PUBLIC_TOMORROW_IO_API_KEY to enable
+                  <Text style={styles.hint}>
+                    Automatically use backup provider if primary fails
+                  </Text>
+
+                  {/* Provider Status */}
+                  <View style={styles.providerStatus}>
+                    <View style={styles.providerRow}>
+                      <View style={[
+                        styles.statusDot, 
+                        { backgroundColor: preferences.weatherProvider?.primaryProvider === 'openmeteo' ? colors.primary : colors.textSecondary }
+                      ]} />
+                      <Text style={styles.providerName}>Open-Meteo</Text>
+                      <Text style={styles.providerLabel}>Free • Always Available</Text>
+                    </View>
+                    <View style={styles.providerRow}>
+                      <View style={[
+                        styles.statusDot,
+                        { backgroundColor: isTomorrowConfigured 
+                          ? (preferences.weatherProvider?.primaryProvider === 'tomorrow' ? colors.accent : colors.textSecondary)
+                          : colors.textMuted 
+                        }
+                      ]} />
+                      <Text style={styles.providerName}>Tomorrow.io</Text>
+                      <Text style={styles.providerLabel}>
+                        {isTomorrowConfigured ? 'Configured' : 'Not Configured'}
                       </Text>
                     </View>
-                  )}
-                </View>
+                    {!isTomorrowConfigured && (
+                      <View style={styles.configHint}>
+                        <AlertCircle color={colors.textMuted} size={12} />
+                        <Text style={styles.configHintText}>
+                          Add EXPO_PUBLIC_TOMORROW_IO_API_KEY to enable
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </>
               );
             } catch {
-              return null;
+              return (
+                <Text style={styles.hint}>Unable to load provider status</Text>
+              );
             }
           })()}
         </View>

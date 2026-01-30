@@ -30,6 +30,7 @@ export const spacing = {
   lg: 24,
   xl: 32,
   xxl: 48,
+  xxxl: 120, // For floating button clearance
 };
 
 export const typography = {
