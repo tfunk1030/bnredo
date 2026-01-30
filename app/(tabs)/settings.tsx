@@ -8,6 +8,7 @@ import {
   TextInput,
   Switch,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,7 +18,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight, Crown, Check, Cloud, AlertCircle } from 'lucide-react-native';
 import { getProviderStatus } from '@/src/services/weather';
-import { colors, spacing, borderRadius, typography, touchTargets, animation } from '@/src/constants/theme';
+import { colors, spacing, borderRadius, typography, touchTargets, animation, glass } from '@/src/constants/theme';
 import { AnimatedCollapsible } from '@/src/components/ui';
 import { useReduceMotion } from '@/src/hooks/useReduceMotion';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
@@ -102,13 +103,20 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <LinearGradient
+        colors={['rgba(35, 134, 54, 0.08)', 'transparent']}
+        style={styles.gradientOverlay}
+        pointerEvents="none"
+      />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        <Text style={styles.title}>Settings</Text>
-
-        <View style={styles.section}>
+        <View style={[
+          styles.section,
+          { marginTop: spacing.lg },
+          preferences.isPremium && { backgroundColor: glass.cardTint.premiumActive }
+        ]}>
           <View style={styles.premiumBanner}>
             <View style={styles.premiumHeader}>
               <Crown
@@ -401,17 +409,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    zIndex: 0,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingBottom: spacing.xxl,
-  },
-  title: {
-    ...typography.title,
-    color: colors.text,
-    textAlign: 'center',
-    marginVertical: spacing.lg,
   },
   section: {
     backgroundColor: colors.surface,

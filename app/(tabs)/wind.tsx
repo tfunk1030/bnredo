@@ -11,11 +11,12 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Lock, Wind, Navigation, Target, Minus, Plus, AlertCircle, Edit3, Check, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, borderRadius, typography, touchTargets } from '@/src/constants/theme';
+import { colors, spacing, borderRadius, typography, touchTargets, glass } from '@/src/constants/theme';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
 import { getWindDirectionLabel } from '@/src/services/weather-service';
@@ -176,6 +177,11 @@ export default function WindScreen() {
   if (!preferences.isPremium) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
+        <LinearGradient
+          colors={['rgba(35, 134, 54, 0.08)', 'transparent']}
+          style={styles.gradientOverlay}
+          pointerEvents="none"
+        />
         <View style={styles.lockedContainer}>
           <View style={styles.lockIconContainer}>
             <Lock color={colors.accent} size={64} strokeWidth={1.5} />
@@ -219,12 +225,16 @@ export default function WindScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <LinearGradient
+        colors={['rgba(35, 134, 54, 0.08)', 'transparent']}
+        style={styles.gradientOverlay}
+        pointerEvents="none"
+      />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Wind Calculator</Text>
         <Text style={styles.subtitle}>Point device at target, then lock</Text>
 
         <View style={styles.compassSection}>
@@ -446,17 +456,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    zIndex: 0,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: spacing.md,
-  },
-  title: {
-    ...typography.title,
-    color: colors.text,
-    textAlign: 'center',
-    marginTop: spacing.md,
   },
   subtitle: {
     color: colors.textSecondary,
@@ -469,6 +481,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
+    backgroundColor: glass.cardTint.premium,
   },
   lockIconContainer: {
     width: 120,

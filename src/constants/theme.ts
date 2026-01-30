@@ -157,5 +157,13 @@ export const glass = {
     dark: 'rgba(0, 0, 0, 0.3)',
     light: 'rgba(255, 255, 255, 0.1)',
     accent: 'rgba(201, 162, 39, 0.15)', // accent color with transparency
+    primary: 'rgba(35, 134, 54, 0.12)', // primary green with transparency
+    accentStrong: 'rgba(201, 162, 39, 0.2)', // stronger gold for premium active
+  },
+  // Card background tints (more subtle, for surface overlays)
+  cardTint: {
+    success: 'rgba(35, 134, 54, 0.06)', // subtle green for result cards
+    premium: 'rgba(201, 162, 39, 0.08)', // subtle gold for premium sections
+    premiumActive: 'rgba(201, 162, 39, 0.12)', // stronger gold when premium is active
   },
 };

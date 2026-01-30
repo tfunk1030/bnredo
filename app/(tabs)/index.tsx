@@ -6,10 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import { Minus, Plus, ChevronDown, ChevronUp } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography, touchTargets } from '@/src/constants/theme';
+import { colors, spacing, borderRadius, typography, touchTargets, glass } from '@/src/constants/theme';
 import { WeatherCard } from '@/src/components/WeatherCard';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useClubBag } from '@/src/contexts/ClubBagContext';
@@ -77,13 +78,16 @@ export default function ShotScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <LinearGradient
+        colors={['rgba(35, 134, 54, 0.08)', 'transparent']}
+        style={styles.gradientOverlay}
+        pointerEvents="none"
+      />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Shot Calculator</Text>
-
         <WeatherCard />
 
         <View style={styles.yardageSection}>
@@ -230,17 +234,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    zIndex: 0,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingBottom: spacing.xxl,
-  },
-  title: {
-    ...typography.title,
-    color: colors.text,
-    textAlign: 'center',
-    marginVertical: spacing.lg,
   },
   yardageSection: {
     backgroundColor: colors.surface,
@@ -312,7 +318,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   resultSection: {
-    backgroundColor: colors.surface,
+    backgroundColor: glass.cardTint.success,
     marginHorizontal: spacing.md,
     marginTop: spacing.lg,
     borderRadius: borderRadius.lg,

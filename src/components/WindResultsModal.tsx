@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Wind, AlertTriangle, ArrowLeft, ArrowRight, RotateCcw } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography, hitSlop } from '@/src/constants/theme';
+import { colors, spacing, borderRadius, typography, hitSlop, glass } from '@/src/constants/theme';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useClubBag } from '@/src/contexts/ClubBagContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   scenarioCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: glass.cardTint.success,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
@@ -355,6 +355,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   gustCard: {
+    backgroundColor: colors.surface,
     borderColor: colors.warning,
   },
   scenarioHeader: {
