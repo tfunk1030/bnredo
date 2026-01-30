@@ -1,741 +1,272 @@
-# Research Report: Multi-Provider Weather API Fallback Systems for Mobile Apps
-Generated: 2026-01-28
+# Research Report: Professional Golf Altitude Effects Calculation Methods
+Generated: 2026-01-29
 
 ## Summary
 
-Implementing a robust multi-provider weather API fallback system requires five key components: (1) exponential backoff with jitter for retry strategies, (2) circuit breaker pattern to prevent cascade failures, (3) stale-while-revalidate caching for offline support, (4) proper error classification to distinguish retryable from fatal errors, and (5) battery-conscious location and fetch strategies for mobile. The current bnredo implementation is missing most of these patterns and would benefit significantly from the structured approach outlined below.
-
----
+Professional golf systems (TrackMan, Foresight, Titleist) primarily use **air density calculations** derived from pressure, temperature, and humidity rather than simple altitude lookup tables. The commonly cited "2% per 1000 feet" rule is a rough empirical approximation, while the more accurate Titleist formula of **1.16% per 1000 feet (~0.00116 multiplier)** is derived from air density physics. The recommended approach is to use **station pressure** (actual barometric pressure at your location) for direct air density calculation, which inherently accounts for altitude effects.
 
 ## Questions Answered
 
-### Q1: What are best practices for retry strategies and timeouts?
-**Answer:** Use exponential backoff with jitter. Start at 1 second, double each attempt, cap at 30-60 seconds. Add random jitter (0-1000ms) to prevent thundering herd. Set request timeouts at 6-10 seconds for weather APIs.
-**Source:** [AWS Retry with Backoff Pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/retry-backoff.html), [Better Stack Exponential Backoff Guide](https://betterstack.com/community/guides/monitoring/exponential-backoff/)
+### Q1: Do professional systems use pressure-based density OR altitude lookup tables OR both?
+
+**Answer:** Professional systems primarily use **pressure-based air density calculations**, with altitude lookup tables serving as simplified fallbacks or sanity checks.
+
+- **TrackMan**: Uses a baseline aerodynamic model with launch data and calculates ball flight based on altitude and temperature settings. The default normalization is 77F and sea level (0 feet). The system measures actual trajectory in real time, then projects what would happen under calm conditions at the specified altitude/temperature.
+
+- **Foresight GCQuad**: Has a built-in barometer that measures actual environmental conditions (barometric pressure, temperature, altitude) and adjusts carry distance calculations accordingly. Users can toggle between using the device's barometer or manually entering altitude/conditions.
+
+- **Titleist Engineering**: Uses the formula `distance_gain = elevation_feet * 0.00116` which is derived from air density physics, not a lookup table.
+
+**Source:** [TrackMan Normalization Feature](https://www.trackman.com/blog/golf/normalization-feature-explained)
 **Confidence:** High
 
-### Q2: What caching strategies work best for weather data?
-**Answer:** Use stale-while-revalidate with tiered freshness: 5-minute fresh window, 30-minute stale-but-usable window, 2-hour emergency fallback. Separate cache entries per location with distance-based invalidation.
-**Source:** [web.dev Stale-While-Revalidate](https://web.dev/articles/stale-while-revalidate), [MDN PWA Caching](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Caching)
+---
+
+### Q2: What is the "rule of thumb" for altitude effects?
+
+**Answer:** There are **two common rules of thumb**, with the second being more accurate:
+
+| Rule | Percentage | Per 1000 ft | Source |
+|------|------------|-------------|--------|
+| Simple rule | 2% | 2.0% | General golf folklore |
+| Titleist formula | 1.16% | 1.16% | Titleist R&D engineering study |
+
+**Practical examples:**
+- Denver (5,280 ft): ~6% longer distance (using Titleist formula)
+- Mexico City (7,835 ft): ~9.1% longer distance
+- PGA yardage books for LIV Golf Mexico City reference 15% increase at ~7,900 ft
+
+**Real-world validation:**
+- Justin Thomas hit a 449-yard drive at Club de Golf Chapultepec (7,835 ft) - longest on Tour that season
+- Phil Mickelson's caddie Jim Mackay tracked every shot Phil ever hit in Denver to calculate adjustments empirically
+
+**Source:** [Titleist Altitude and Ball Flight](https://www.titleist.com/learning-lab/performance/altitude-and-golf-ball-flight)
 **Confidence:** High
 
-### Q3: How should rate limiting be handled?
-**Answer:** Implement circuit breaker pattern with three states (closed, open, half-open). After 3-5 consecutive failures, open the circuit for 30-60 seconds. Check for `Retry-After` header and `X-RateLimit-*` headers. Track rate limits per provider separately.
-**Source:** [Microservices Circuit Breaker Pattern](https://microservices.io/patterns/reliability/circuit-breaker.html), [Medium: API Circuit Breaker in iOS](https://medium.com/@adarsh.ranjan/api-circuit-breaker-in-ios-a-beginners-comprehensive-guide-7973e6d3ebd5)
+---
+
+### Q3: Is the 2% per 1000ft rule derived from air density changes or is it empirical?
+
+**Answer:** The 2% rule appears to be a **rounded empirical approximation**, while the more precise 1.16% figure from Titleist is **derived from aerodynamic physics**.
+
+**The physics basis:**
+- Air density decreases approximately exponentially with altitude
+- Below 10 km, air density decreases on average by ~1.5% per 100 meters of altitude (including temperature effects)
+- At Denver (1 mile), air density is approximately 82% of sea-level conditions
+- The drag force equation is: `R = 0.5 * Cd * rho * A * V^2` where rho is air density
+- Less dense air = less drag = longer ball flight
+
+**Why 1.16% not 2%:**
+- The 2% rule likely includes a safety margin or accounts for additional factors (temperature, reduced lift, etc.)
+- The Titleist 1.16% (0.00116 multiplier) is more precisely derived from pure air density changes affecting drag
+- Actual altitude effects are non-linear due to the exponential nature of atmospheric pressure decline
+
+**Source:** [Physics of Golf Ball Altitude Effects](http://golf.okrasa.eu/language/en/golf-ball/influence-of-weather-and-altitude-on-ball-flight/)
+**Confidence:** Medium (derivation methodology not fully documented in public sources)
+
+---
+
+### Q4: How does TrackMan separate density effects from altitude effects?
+
+**Answer:** TrackMan does **not truly separate them** - altitude is used as a proxy for reduced air density, which is the actual physical mechanism.
+
+**TrackMan's approach:**
+1. User sets altitude and temperature in TPS (TrackMan Performance Studio)
+2. System calculates expected air density from these inputs
+3. Normalization feature computes what ball flight would be under calm conditions at that altitude/temperature
+4. Three forces are modeled: gravity, lift, and drag (all density-dependent)
+
+**Key insight:** "Thinner air exerts less drag force on the ball, so it moves more easily through the air and doesn't slow down as quickly as it flies."
+
+**What's NOT captured by altitude alone:**
+- Temperature variations (warmer = less dense = longer flight)
+- Humidity (counterintuitively, humid air is less dense than dry air)
+- Barometric pressure variations (high/low pressure systems)
+- Reduced lift at altitude (ball flies flatter trajectory)
+- Reduced Magnus effect (curves less at altitude)
+
+**Source:** [TrackMan Blog - How Altitude Affects Ball Flight](https://blog.trackmangolf.com/how-altitude-affects-the-distance-your-ball-flies/)
 **Confidence:** High
 
-### Q4: How to classify errors as retryable vs fatal?
-**Answer:** Retryable: 408, 429, 500, 502, 503, 504, network timeouts. Fatal: 400, 401, 403, 404, 405, 422. Special case: 409 (conflict) may be retryable after delay.
-**Source:** [Baeldung: HTTP Error Status Codes Retry](https://www.baeldung.com/cs/http-error-status-codes-retry), [REST API Tutorial: HTTP Status Codes and Retry](https://www.restapitutorial.com/advanced/responses/retries)
-**Confidence:** High
+---
 
-### Q5: What offline support patterns work best?
-**Answer:** Three-tier fallback: (1) Fresh cache (< 5 min), (2) Stale cache with "last updated" indicator, (3) Default/reasonable values with clear UI indication. Always show data age to user.
-**Source:** [PWA Offline Functionality Checklist](https://www.zeepalm.com/blog/pwa-offline-functionality-caching-strategies-checklist)
-**Confidence:** High
+### Q5: Recommended approach - station pressure (includes altitude) or MSL pressure + altitude adjustment?
 
-### Q6: How to optimize battery for location/weather updates?
-**Answer:** Use adaptive intervals based on app state (foreground: 5 min, background: 15-30 min). Implement geofencing to trigger updates only on significant location change (> 2km for weather). Respect Low Power Mode by reducing/stopping background fetches.
-**Source:** [DEV: React Native Background Tasks 2026](https://dev.to/eira-wexford/run-react-native-background-tasks-2026-for-optimal-performance-d26), [Medium: Track User Location Without Killing Battery](https://medium.com/@mohantaankit2002/track-user-location-without-killing-their-battery-a-react-native-guide-d57f29fd2ebe)
+**Answer:** **Use station pressure for air density calculations** - this is the recommended approach for accuracy.
+
+**Why station pressure:**
+- Station pressure is the actual barometric pressure at your location
+- It inherently accounts for altitude (no separate altitude adjustment needed)
+- It captures real-time atmospheric variations (pressure systems, weather fronts)
+- Professional golf launch monitors (GCQuad) use built-in barometers measuring station pressure
+
+**Station pressure vs. sea-level pressure:**
+- Weather reports typically show sea-level pressure (adjusted for altitude)
+- Sea-level pressure = station pressure + altitude correction
+- Station pressure at 4,500 ft is approximately 25.64 inHg vs. 30.14 inHg at sea level
+
+**The calculation workflow:**
+1. Get station pressure (from weather sensor or calculate from reported barometric pressure minus altitude)
+2. Get temperature and humidity
+3. Calculate actual air density using ideal gas law with moisture correction
+4. Calculate density ratio vs. standard sea-level density (1.225 kg/m^3)
+5. Apply density-based distance adjustment
+
+**Formula for moist air density:**
+```
+rho = (Pd / (Rd * T)) + (Pv / (Rv * T))
+
+Where:
+- Pd = partial pressure of dry air (station pressure - vapor pressure)
+- Pv = partial pressure of water vapor
+- Rd = gas constant for dry air (287.05 J/(kg*K))
+- Rv = gas constant for water vapor (461.495 J/(kg*K))
+- T = temperature in Kelvin
+```
+
+**Source:** [Kestrel Instruments - Barometric vs Station Pressure](https://kestrelinstruments.com/blog/barometric-pressure-vs-station-pressure-whats-the-difference)
 **Confidence:** High
 
 ---
 
 ## Detailed Findings
 
-### Finding 1: Exponential Backoff with Jitter
+### Finding 1: PGA Tour Real-World Altitude Adjustments
 
-**Source:** [Better Stack: Mastering Exponential Backoff](https://betterstack.com/community/guides/monitoring/exponential-backoff/)
+**Source:** [PGA Tour - Altitude Adjustment Colorado](https://www.pgatour.com/article/news/latest/2024/08/21/altitude-adjustment-colorado-castle-pines-golf-club-elevation-challenge-bmw-championship)
 
 **Key Points:**
-- Base formula: `delay = min(cap, base * 2^attempt)`
-- Add jitter: `delay = delay + random(0, 1000ms)`
-- Prevents synchronized retry waves from multiple clients
-- Recommended cap: 30-60 seconds for weather APIs
+- Castle Pines (BMW Championship) is 6,368 feet - players experience 7.4% more distance
+- Club de Golf Chapultepec (Mexico City) at 7,835 feet is the highest course ever played on PGA Tour
+- Players multiply distance by a fixed percentage (10-15%) then subtract from actual yardage
+- Phil Mickelson kept historical records of every shot in Denver for empirical adjustments
 
-**Code Example:**
+**Code Reference from Current Codebase:**
 ```typescript
-// src/services/weather/retry-strategy.ts
-export interface RetryConfig {
-  maxAttempts: number;
-  baseDelayMs: number;
-  maxDelayMs: number;
-  jitterMs: number;
-}
-
-export const DEFAULT_RETRY_CONFIG: RetryConfig = {
-  maxAttempts: 3,
-  baseDelayMs: 1000,
-  maxDelayMs: 30000,
-  jitterMs: 1000,
+// From /home/tfunk1030/bnredo/src/core/models/yardagemodel.ts
+// ALTITUDE_EFFECTS lookup table (lines 205-215)
+private static readonly ALTITUDE_EFFECTS: Readonly<Record<number, number>> = {
+  0: 1.000,
+  1000: 1.021,  // 2.1% at 1000ft
+  2000: 1.043,  // 4.3% at 2000ft
+  3000: 1.065,  // 6.5% at 3000ft
+  4000: 1.088,  // 8.8% at 4000ft
+  5000: 1.112,  // 11.2% at 5000ft
+  6000: 1.137,  // 13.7% at 6000ft
+  7000: 1.163,  // 16.3% at 7000ft
+  8000: 1.190   // 19.0% at 8000ft
 };
-
-export function calculateBackoff(attempt: number, config: RetryConfig): number {
-  const exponentialDelay = Math.min(
-    config.maxDelayMs,
-    config.baseDelayMs * Math.pow(2, attempt)
-  );
-  const jitter = Math.random() * config.jitterMs;
-  return exponentialDelay + jitter;
-}
-
-export async function withRetry<T>(
-  operation: () => Promise<T>,
-  config: RetryConfig = DEFAULT_RETRY_CONFIG,
-  isRetryable: (error: unknown) => boolean = defaultIsRetryable
-): Promise<T> {
-  let lastError: unknown;
-  
-  for (let attempt = 0; attempt < config.maxAttempts; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error;
-      
-      if (!isRetryable(error) || attempt === config.maxAttempts - 1) {
-        throw error;
-      }
-      
-      const delay = calculateBackoff(attempt, config);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-  
-  throw lastError;
-}
 ```
 
-### Finding 2: Circuit Breaker Pattern
+**Note:** The current codebase uses ~2.1% per 1000 ft, which is slightly higher than the Titleist 1.16% figure. This may be intentional to include secondary effects (trajectory changes, reduced lift, etc.).
 
-**Source:** [Microservices.io: Circuit Breaker](https://microservices.io/patterns/reliability/circuit-breaker.html)
+---
+
+### Finding 2: Temperature vs. Altitude Priority
+
+**Source:** [TrackMan Blog - Weather Effects](https://blog.trackmangolf.com/learn-weather-affect-ball-flight/)
 
 **Key Points:**
-- Three states: Closed (normal), Open (failing fast), Half-Open (testing recovery)
-- Track failure rate per provider independently
-- Open circuit after threshold (e.g., 3 failures in 60 seconds)
-- Half-open after cooldown period (30-60 seconds)
-- Critical for multi-provider systems to avoid cascading failures
+- **Temperature has the greatest effect** on distance among weather factors
+- Going from 40F to 100F increases a 6-iron by almost 8 yards (driver by 9 yards)
+- That's approximately 1 yard per 10F temperature change
+- **Humidity has minimal effect** - 10% to 90% humidity accounts for less than 1 yard on a 6-iron
+- **Pressure alone has minimal effect** - less than 1 yard difference
 
-**Code Example:**
+**Magnitude comparison:**
+| Factor | Effect on Distance |
+|--------|-------------------|
+| Temperature (40F to 100F) | +8-9 yards (driver) |
+| Altitude (sea level to 5000ft) | +15 yards (driver at 250yd) |
+| Humidity (10% to 90%) | <1 yard |
+| Pressure variations | <1 yard |
+
+---
+
+### Finding 3: Air Density Formula Implementation
+
+**Source:** [Physics Forum - Golf Ball Weather Effects](https://www.physicsforums.com/threads/how-weather-conditions-affect-a-golf-shot.1010258/)
+
+**Current implementation analysis:**
+The codebase at `/home/tfunk1030/bnredo/src/core/models/yardagemodel.ts` (lines 253-264) uses the correct formula:
+
 ```typescript
-// src/services/weather/circuit-breaker.ts
-export type CircuitState = 'closed' | 'open' | 'half-open';
+private calculateAirDensity(tempF: number, pressureMb: number, humidity: number): number {
+  const tempC = (tempF - 32) * 5/9;
+  const pressurePa = pressureMb * 100;
 
-export interface CircuitBreakerConfig {
-  failureThreshold: number;    // failures before opening
-  resetTimeoutMs: number;      // time before half-open
-  halfOpenMaxAttempts: number; // test requests in half-open
-}
+  // Magnus equation for saturation vapor pressure
+  const svp = MAGNUS_A * Math.exp((MAGNUS_B * tempC) / (tempC + MAGNUS_C));
+  const vaporPressure = (humidity / 100) * svp;
 
-export const DEFAULT_CIRCUIT_CONFIG: CircuitBreakerConfig = {
-  failureThreshold: 3,
-  resetTimeoutMs: 30000,
-  halfOpenMaxAttempts: 1,
-};
-
-export class CircuitBreaker {
-  private state: CircuitState = 'closed';
-  private failureCount = 0;
-  private lastFailureTime = 0;
-  private halfOpenAttempts = 0;
-
-  constructor(
-    private readonly name: string,
-    private readonly config: CircuitBreakerConfig = DEFAULT_CIRCUIT_CONFIG
-  ) {}
-
-  canAttempt(): boolean {
-    if (this.state === 'closed') return true;
-    
-    if (this.state === 'open') {
-      const elapsed = Date.now() - this.lastFailureTime;
-      if (elapsed >= this.config.resetTimeoutMs) {
-        this.state = 'half-open';
-        this.halfOpenAttempts = 0;
-        return true;
-      }
-      return false;
-    }
-    
-    // half-open: allow limited attempts
-    return this.halfOpenAttempts < this.config.halfOpenMaxAttempts;
-  }
-
-  recordSuccess(): void {
-    this.failureCount = 0;
-    this.state = 'closed';
-  }
-
-  recordFailure(): void {
-    this.failureCount++;
-    this.lastFailureTime = Date.now();
-    
-    if (this.state === 'half-open') {
-      this.halfOpenAttempts++;
-      if (this.halfOpenAttempts >= this.config.halfOpenMaxAttempts) {
-        this.state = 'open';
-      }
-    } else if (this.failureCount >= this.config.failureThreshold) {
-      this.state = 'open';
-    }
-  }
-
-  getState(): CircuitState {
-    return this.state;
-  }
+  // Sum of dry air density and water vapor density
+  return (pressurePa - vaporPressure * 100) / (GAS_CONSTANT_DRY * (tempC + 273.15)) +
+         vaporPressure * 100 / (GAS_CONSTANT_VAPOR * (tempC + 273.15));
 }
 ```
 
-### Finding 3: Error Classification
-
-**Source:** [Baeldung: HTTP Error Status Codes Retry](https://www.baeldung.com/cs/http-error-status-codes-retry)
-
-**Key Points:**
-- 4xx errors generally NOT retryable (client error)
-- 5xx errors generally retryable (server error)
-- Special handling for 429 (rate limit) - use Retry-After header
-- Network errors (timeout, DNS) are retryable
-- Parse error should be treated as fatal for that provider
-
-**Code Example:**
-```typescript
-// src/services/weather/error-classifier.ts
-export type ErrorType = 'retryable' | 'fatal' | 'rate-limited';
-
-export interface ClassifiedError {
-  type: ErrorType;
-  retryAfterMs?: number;
-  message: string;
-  originalError: unknown;
-}
-
-export function classifyError(error: unknown): ClassifiedError {
-  // Network errors
-  if (error instanceof TypeError && error.message.includes('fetch')) {
-    return { type: 'retryable', message: 'Network error', originalError: error };
-  }
-  
-  // Timeout errors
-  if (error instanceof Error && error.name === 'AbortError') {
-    return { type: 'retryable', message: 'Request timeout', originalError: error };
-  }
-  
-  // HTTP errors
-  if (error instanceof Response || (error as any)?.status) {
-    const status = (error as any).status;
-    const retryAfter = parseRetryAfter((error as any).headers);
-    
-    // Rate limited
-    if (status === 429) {
-      return { 
-        type: 'rate-limited', 
-        retryAfterMs: retryAfter || 60000,
-        message: 'Rate limited',
-        originalError: error 
-      };
-    }
-    
-    // Retryable server errors
-    if ([500, 502, 503, 504, 408].includes(status)) {
-      return { 
-        type: 'retryable', 
-        retryAfterMs: retryAfter,
-        message: `Server error: ${status}`,
-        originalError: error 
-      };
-    }
-    
-    // Fatal client errors
-    if (status >= 400 && status < 500) {
-      return { type: 'fatal', message: `Client error: ${status}`, originalError: error };
-    }
-  }
-  
-  // Unknown errors - treat as retryable once
-  return { type: 'retryable', message: 'Unknown error', originalError: error };
-}
-
-function parseRetryAfter(headers: Headers | undefined): number | undefined {
-  if (!headers) return undefined;
-  
-  const retryAfter = headers.get('Retry-After');
-  if (!retryAfter) return undefined;
-  
-  // Could be seconds or HTTP-date
-  const seconds = parseInt(retryAfter, 10);
-  if (!isNaN(seconds)) {
-    return seconds * 1000;
-  }
-  
-  const date = new Date(retryAfter);
-  if (!isNaN(date.getTime())) {
-    return Math.max(0, date.getTime() - Date.now());
-  }
-  
-  return undefined;
-}
-```
-
-### Finding 4: Tiered Caching Strategy
-
-**Source:** [web.dev: Stale-While-Revalidate](https://web.dev/articles/stale-while-revalidate)
-
-**Key Points:**
-- Fresh window: 5 minutes - serve immediately, no revalidation
-- Stale window: 5-30 minutes - serve immediately, revalidate in background
-- Emergency window: 30 min - 2 hours - serve with strong warning, revalidate
-- Expired: > 2 hours - must fetch fresh, show loading state
-- Include data age in UI for transparency
-
-**Code Example:**
-```typescript
-// src/services/weather/cache-manager.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-export interface CachedWeather {
-  data: NormalizedWeather;
-  timestamp: number;
-  location: { lat: number; lon: number };
-}
-
-export type CacheFreshness = 'fresh' | 'stale' | 'emergency' | 'expired';
-
-export const CACHE_WINDOWS = {
-  fresh: 5 * 60 * 1000,        // 5 minutes
-  stale: 30 * 60 * 1000,       // 30 minutes
-  emergency: 2 * 60 * 60 * 1000, // 2 hours
-};
-
-export class WeatherCacheManager {
-  private readonly cacheKey = 'weather_cache_v2';
-  private memoryCache: CachedWeather | null = null;
-
-  async get(lat: number, lon: number): Promise<{ data: NormalizedWeather; freshness: CacheFreshness } | null> {
-    // Check memory first
-    let cached = this.memoryCache;
-    
-    // Fall back to persistent storage
-    if (!cached) {
-      try {
-        const stored = await AsyncStorage.getItem(this.cacheKey);
-        if (stored) {
-          cached = JSON.parse(stored);
-          this.memoryCache = cached;
-        }
-      } catch {
-        return null;
-      }
-    }
-    
-    if (!cached) return null;
-    
-    // Check location distance (invalidate if > 5km)
-    const distance = this.getDistanceKm(lat, lon, cached.location.lat, cached.location.lon);
-    if (distance > 5) return null;
-    
-    // Determine freshness
-    const age = Date.now() - cached.timestamp;
-    const freshness = this.getFreshness(age);
-    
-    if (freshness === 'expired') return null;
-    
-    return { data: cached.data, freshness };
-  }
-
-  private getFreshness(ageMs: number): CacheFreshness {
-    if (ageMs < CACHE_WINDOWS.fresh) return 'fresh';
-    if (ageMs < CACHE_WINDOWS.stale) return 'stale';
-    if (ageMs < CACHE_WINDOWS.emergency) return 'emergency';
-    return 'expired';
-  }
-
-  async set(data: NormalizedWeather, lat: number, lon: number): Promise<void> {
-    const cached: CachedWeather = {
-      data,
-      timestamp: Date.now(),
-      location: { lat, lon },
-    };
-    
-    this.memoryCache = cached;
-    
-    try {
-      await AsyncStorage.setItem(this.cacheKey, JSON.stringify(cached));
-    } catch (error) {
-      console.warn('Failed to persist weather cache:', error);
-    }
-  }
-
-  private getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) ** 2 +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  }
-}
-```
-
-### Finding 5: Battery-Optimized Location Updates
-
-**Source:** [DEV: React Native Background Geolocation 2026](https://dev.to/sherry_walker_bba406fb339/react-native-background-geolocation-for-mobile-apps-2026-2ibd)
-
-**Key Points:**
-- iOS 18+ and Android 15 have aggressive battery optimization
-- Use adaptive intervals: foreground (5 min), background (15-30 min)
-- Implement significant location change detection (2km threshold for weather)
-- Respect Low Power Mode - reduce or stop background fetches
-- Use `react-native-background-fetch` for scheduled updates
-- WorkManager on Android, BGTaskScheduler on iOS
-
-**Code Example:**
-```typescript
-// src/services/weather/location-manager.ts
-import * as Location from 'expo-location';
-import * as Battery from 'expo-battery';
-
-export interface LocationConfig {
-  foregroundIntervalMs: number;
-  backgroundIntervalMs: number;
-  significantChangeThresholdKm: number;
-  lowPowerIntervalMs: number;
-}
-
-export const DEFAULT_LOCATION_CONFIG: LocationConfig = {
-  foregroundIntervalMs: 5 * 60 * 1000,       // 5 minutes
-  backgroundIntervalMs: 30 * 60 * 1000,      // 30 minutes
-  significantChangeThresholdKm: 2,            // 2 km movement triggers update
-  lowPowerIntervalMs: 60 * 60 * 1000,        // 1 hour in low power mode
-};
-
-export class LocationManager {
-  private lastLocation: { lat: number; lon: number } | null = null;
-  private lastUpdateTime = 0;
-  private isLowPowerMode = false;
-  private appState: 'foreground' | 'background' = 'foreground';
-
-  async shouldFetchWeather(): Promise<{ shouldFetch: boolean; location: { lat: number; lon: number } | null }> {
-    // Check battery state
-    const batteryLevel = await Battery.getBatteryLevelAsync();
-    const batteryState = await Battery.getBatteryStateAsync();
-    this.isLowPowerMode = batteryLevel < 0.2 || batteryState === Battery.BatteryState.UNPLUGGED && batteryLevel < 0.3;
-
-    // Get current interval based on state
-    const interval = this.getCurrentInterval();
-    const timeSinceLastUpdate = Date.now() - this.lastUpdateTime;
-    
-    // Time-based check
-    if (timeSinceLastUpdate < interval) {
-      return { shouldFetch: false, location: this.lastLocation };
-    }
-
-    // Get current location
-    try {
-      const { status } = await Location.getForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        return { shouldFetch: false, location: this.lastLocation };
-      }
-
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: this.isLowPowerMode 
-          ? Location.Accuracy.Low 
-          : Location.Accuracy.Balanced,
-      });
-
-      const currentLocation = {
-        lat: location.coords.latitude,
-        lon: location.coords.longitude,
-      };
-
-      // Check significant location change
-      if (this.lastLocation) {
-        const distance = this.getDistanceKm(
-          this.lastLocation.lat, this.lastLocation.lon,
-          currentLocation.lat, currentLocation.lon
-        );
-        
-        if (distance < DEFAULT_LOCATION_CONFIG.significantChangeThresholdKm && 
-            timeSinceLastUpdate < interval) {
-          return { shouldFetch: false, location: currentLocation };
-        }
-      }
-
-      this.lastLocation = currentLocation;
-      this.lastUpdateTime = Date.now();
-      return { shouldFetch: true, location: currentLocation };
-
-    } catch (error) {
-      return { shouldFetch: false, location: this.lastLocation };
-    }
-  }
-
-  private getCurrentInterval(): number {
-    if (this.isLowPowerMode) {
-      return DEFAULT_LOCATION_CONFIG.lowPowerIntervalMs;
-    }
-    return this.appState === 'foreground' 
-      ? DEFAULT_LOCATION_CONFIG.foregroundIntervalMs
-      : DEFAULT_LOCATION_CONFIG.backgroundIntervalMs;
-  }
-
-  setAppState(state: 'foreground' | 'background'): void {
-    this.appState = state;
-  }
-
-  private getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) ** 2 +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  }
-}
-```
-
-### Finding 6: Provider Orchestrator with Fallback
-
-**Source:** [Medium: Resilient APIs](https://medium.com/@fahimad/resilient-apis-retry-logic-circuit-breakers-and-fallback-mechanisms-cfd37f523f43)
-
-**Key Points:**
-- Each provider gets its own circuit breaker
-- Try providers in priority order
-- Skip providers with open circuits
-- Track provider health metrics for adaptive ordering
-- Return source information with data for transparency
-
-**Code Example:**
-```typescript
-// src/services/weather/provider-orchestrator.ts
-import { CircuitBreaker } from './circuit-breaker';
-import { withRetry, DEFAULT_RETRY_CONFIG } from './retry-strategy';
-import { classifyError } from './error-classifier';
-import { WeatherCacheManager, CacheFreshness } from './cache-manager';
-
-export type WeatherProvider = 'tomorrow' | 'meteoblue' | 'openmeteo';
-
-export interface ProviderResult {
-  data: NormalizedWeather;
-  source: WeatherProvider;
-  freshness: CacheFreshness;
-  fromCache: boolean;
-}
-
-export class WeatherOrchestrator {
-  private circuitBreakers: Map<WeatherProvider, CircuitBreaker> = new Map();
-  private cache: WeatherCacheManager;
-  private providerOrder: WeatherProvider[] = ['tomorrow', 'meteoblue', 'openmeteo'];
-
-  constructor() {
-    this.cache = new WeatherCacheManager();
-    
-    for (const provider of this.providerOrder) {
-      this.circuitBreakers.set(provider, new CircuitBreaker(provider));
-    }
-  }
-
-  async fetchWeather(
-    lat: number, 
-    lon: number, 
-    elevation: number
-  ): Promise<ProviderResult> {
-    // Check cache first
-    const cached = await this.cache.get(lat, lon);
-    if (cached?.freshness === 'fresh') {
-      return {
-        data: cached.data,
-        source: cached.data.source as WeatherProvider,
-        freshness: 'fresh',
-        fromCache: true,
-      };
-    }
-
-    // Try providers in order
-    let lastError: unknown;
-    
-    for (const provider of this.providerOrder) {
-      const breaker = this.circuitBreakers.get(provider)!;
-      
-      if (!breaker.canAttempt()) {
-        console.log(`Skipping ${provider}: circuit open`);
-        continue;
-      }
-
-      try {
-        const data = await withRetry(
-          () => this.fetchFromProvider(provider, lat, lon, elevation),
-          {
-            ...DEFAULT_RETRY_CONFIG,
-            maxAttempts: 2, // Less retries per provider in fallback chain
-          }
-        );
-
-        breaker.recordSuccess();
-        await this.cache.set(data, lat, lon);
-        
-        return {
-          data,
-          source: provider,
-          freshness: 'fresh',
-          fromCache: false,
-        };
-
-      } catch (error) {
-        lastError = error;
-        const classified = classifyError(error);
-        
-        if (classified.type === 'fatal') {
-          console.error(`Fatal error from ${provider}:`, classified.message);
-        } else {
-          breaker.recordFailure();
-        }
-      }
-    }
-
-    // All providers failed - try stale cache
-    if (cached) {
-      console.warn('All providers failed, using stale cache');
-      return {
-        data: cached.data,
-        source: cached.data.source as WeatherProvider,
-        freshness: cached.freshness,
-        fromCache: true,
-      };
-    }
-
-    throw new Error(`All weather providers failed: ${lastError}`);
-  }
-
-  private async fetchFromProvider(
-    provider: WeatherProvider,
-    lat: number,
-    lon: number,
-    elevation: number
-  ): Promise<NormalizedWeather> {
-    // Implementation delegates to individual adapters
-    switch (provider) {
-      case 'tomorrow':
-        return fetchTomorrowWeather(lat, lon, elevation);
-      case 'meteoblue':
-        return fetchMeteoblueWeather(lat, lon, elevation);
-      case 'openmeteo':
-        return fetchOpenMeteoWeather(lat, lon, elevation);
-    }
-  }
-
-  getProviderHealth(): Record<WeatherProvider, { state: string; canAttempt: boolean }> {
-    const health: Record<string, any> = {};
-    for (const [provider, breaker] of this.circuitBreakers) {
-      health[provider] = {
-        state: breaker.getState(),
-        canAttempt: breaker.canAttempt(),
-      };
-    }
-    return health;
-  }
-}
-```
+**This is correct** - it calculates air density from pressure (expected to be station pressure), temperature, and humidity using the standard moist air density formula.
 
 ---
 
 ## Comparison Matrix
 
-| Strategy | Complexity | Reliability | Battery Impact | Recommendation |
-|----------|------------|-------------|----------------|----------------|
-| Simple retry (current) | Low | Low | None | Upgrade needed |
-| Exponential backoff | Medium | Medium | Low | Must have |
-| Circuit breaker | Medium | High | None | Must have |
-| Multi-provider fallback | High | Very High | Low | Must have |
-| Stale-while-revalidate | Medium | High | Low | Must have |
-| Background fetch | High | High | Medium | Optional |
+| Approach | Pros | Cons | Use Case |
+|----------|------|------|----------|
+| **Station Pressure + Air Density** | Most accurate; captures real-time weather; no separate altitude adjustment | Requires accurate barometer or station pressure data | Professional applications, launch monitors |
+| **Altitude Lookup Table** | Simple; easy mental math; no sensor needed | Less accurate; misses pressure variations; fixed increments | Quick estimates, casual play |
+| **MSL Pressure + Altitude Adjustment** | Uses readily available weather data | Requires conversion; potential for errors | When only MSL pressure available |
+| **Hybrid (current codebase)** | Uses both density calculation AND has altitude lookup | Redundant; may double-count altitude | Fallback/validation approach |
 
 ---
 
 ## Recommendations
 
-### For bnredo Codebase
+### For This Codebase
 
-1. **Immediate (P0):** Add error classification and basic retry logic
-   - Current code has no retry mechanism at all
-   - Add `classifyError()` and single retry with backoff for 5xx errors
+1. **Continue using air density calculation** - The current implementation at line 253-264 is correct and matches professional approaches.
 
-2. **Short-term (P1):** Implement tiered caching
-   - Current 5-minute flat cache is too simple
-   - Add freshness indicators to UI
-   - Allow stale data during outages
+2. **Clarify pressure input type** - Document whether `setConditions()` expects station pressure or MSL pressure. For accuracy, it should be station pressure.
 
-3. **Medium-term (P2):** Add circuit breaker pattern
-   - Essential before adding multiple providers
-   - Prevents cascade failures during provider outages
+3. **Review ALTITUDE_EFFECTS table usage** - The lookup table (lines 205-215) appears unused in the current `calculateEnvironmentalFactor()` method. Consider whether to:
+   - Remove it (if air density calculation is sufficient)
+   - Use it as a fallback when pressure data is unavailable
+   - Use it for validation/sanity checking
 
-4. **Long-term (P3):** Full multi-provider implementation
-   - Add Tomorrow.io as primary (better accuracy)
-   - Keep Open-Meteo as free fallback
-   - Consider Meteoblue for wind accuracy (1.36 m/s MAE)
+4. **Consider the 1.16% vs 2.1% discrepancy** - The current table uses ~2.1% per 1000ft. This is higher than Titleist's 1.16% figure. Options:
+   - Reduce to match Titleist (more conservative)
+   - Keep at 2.1% if it includes secondary effects (trajectory flattening, reduced lift)
+   - Document the reasoning for the chosen value
 
 ### Implementation Notes
 
-1. **Request Timeout:** Set 8-second timeout for weather requests. Mobile networks are variable; too short causes false failures, too long degrades UX.
+- **Station pressure from weather APIs:** Open-Meteo (currently used per CLAUDE.md) provides `surface_pressure` which is station pressure - this is the correct value to use.
 
-2. **Jitter is Critical:** Without jitter, retry storms can occur when many users experience the same outage simultaneously.
+- **Avoid double-counting:** If using air density from station pressure, do NOT also apply a separate altitude adjustment. The altitude effect is already captured in the lower station pressure.
 
-3. **Circuit Breaker Per Provider:** Do NOT use a single global circuit breaker. Each provider should have independent health tracking.
-
-4. **Cache Location Separately:** Store lat/lon with cached data. Golf courses are stationary, so location rarely changes during a session.
-
-5. **Show Data Freshness:** Always display when weather was last updated. Users need to know if they are seeing stale data.
-
-6. **Graceful Degradation:** When all providers fail and cache is stale, still show the data with clear warning rather than blocking the app.
-
----
-
-## Files to Add/Modify in bnredo
-
-### New Files
-```
-src/services/weather/
-  retry-strategy.ts      # Exponential backoff with jitter
-  circuit-breaker.ts     # Circuit breaker implementation
-  error-classifier.ts    # HTTP error classification
-  cache-manager.ts       # Tiered caching with freshness
-  provider-orchestrator.ts # Multi-provider coordination
-  tomorrow-adapter.ts    # Tomorrow.io API adapter
-  meteoblue-adapter.ts   # Meteoblue API adapter
-  openmeteo-adapter.ts   # Refactored from weather-service.ts
-  location-manager.ts    # Battery-optimized location
-  types.ts               # Shared types
-```
-
-### Files to Modify
-```
-src/services/weather-service.ts  # Refactor to use orchestrator
-src/contexts/WeatherContext.tsx  # Add freshness state, error handling
-app/(tabs)/index.tsx             # Show data freshness indicator
-app/(tabs)/wind.tsx              # Show data freshness indicator
-```
+- **Temperature adjustment priority:** Given temperature has the largest effect, ensure temperature is accurately captured and the temperature-to-density relationship is properly modeled.
 
 ---
 
 ## Sources
 
-1. [AWS Retry with Backoff Pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/retry-backoff.html) - AWS official guidance on retry patterns
-2. [Better Stack: Exponential Backoff](https://betterstack.com/community/guides/monitoring/exponential-backoff/) - Comprehensive guide to backoff strategies
-3. [Microservices.io: Circuit Breaker](https://microservices.io/patterns/reliability/circuit-breaker.html) - Pattern definition and use cases
-4. [web.dev: Stale-While-Revalidate](https://web.dev/articles/stale-while-revalidate) - Google caching strategy guide
-5. [MDN: PWA Caching](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Caching) - Service worker caching strategies
-6. [DEV: React Native Background Tasks 2026](https://dev.to/eira-wexford/run-react-native-background-tasks-2026-for-optimal-performance-d26) - Current best practices for RN background tasks
-7. [Medium: API Circuit Breaker in iOS](https://medium.com/@adarsh.ranjan/api-circuit-breaker-in-ios-a-beginners-comprehensive-guide-7973e6d3ebd5) - Mobile-specific circuit breaker guidance
-8. [Baeldung: HTTP Error Status Codes Retry](https://www.baeldung.com/cs/http-error-status-codes-retry) - Error classification reference
-9. [Xweather: Top Weather APIs 2026](https://www.xweather.com/blog/article/top-weather-apis-for-production-2026) - API comparison and selection criteria
-10. [Medium: Track User Location Without Killing Battery](https://medium.com/@mohantaankit2002/track-user-location-without-killing-their-battery-a-react-native-guide-d57f29fd2ebe) - Battery optimization strategies
+1. [TrackMan Normalization Feature Explained](https://www.trackman.com/blog/golf/normalization-feature-explained) - Official TrackMan documentation on how normalization works
+2. [TrackMan Blog - How Altitude Affects Ball Flight](https://blog.trackmangolf.com/how-altitude-affects-the-distance-your-ball-flies/) - Detailed altitude effects explanation
+3. [Titleist Learning Lab - Altitude and Ball Flight](https://www.titleist.com/learning-lab/performance/altitude-and-golf-ball-flight) - Titleist R&D formula (0.00116 multiplier)
+4. [Titleist Team Blog - Golf Ball Aerodynamics and Altitude](https://www.titleist.com/teamtitleist/b/tourblog/posts/the-effect-of-altitude-golf-ball-aerodynamics) - Technical aerodynamics discussion
+5. [PGA Tour - Altitude Adjustment Colorado BMW Championship](https://www.pgatour.com/article/news/latest/2024/08/21/altitude-adjustment-colorado-castle-pines-golf-club-elevation-challenge-bmw-championship) - Real-world pro tournament adjustments
+6. [PGA Tour - WGC Mexico Championship Altitude](https://www.pgatour.com/article/news/long-form/2017/02/28/elevated-expectations-wgc-mexico-championship-altitude) - Mexico City course at 7,835 ft
+7. [Kestrel Instruments - Barometric vs Station Pressure](https://kestrelinstruments.com/blog/barometric-pressure-vs-station-pressure-whats-the-difference) - Pressure measurement explanation
+8. [Golf Ball Weather Effects Calculator](http://golf.okrasa.eu/language/en/golf-ball/influence-of-weather-and-altitude-on-ball-flight/) - Interactive calculator with physics explanation
+9. [Golf Digest - Pro Adjustments at Mexico Championship](https://www.golfdigest.com/story/heres-what-tour-pros-are-doing-at-the-wgc-mexico-championship-to-adjust-to-playing-at-altitude) - How pros adjust at altitude
+10. [Engineering Toolbox - Air Density vs Altitude](https://www.engineeringtoolbox.com/air-altitude-density-volume-d_195.html) - Engineering reference for density calculations
 
 ---
 
 ## Open Questions
 
-1. Should rate limit state persist across app restarts? (Probably yes for 24-hour limits)
-2. Should circuit breaker state sync across devices via Supabase? (Probably no - per-device is fine)
-3. What is the acceptable staleness for wind data specifically? (Wind changes faster than temperature)
-4. Should premium users get different provider priority? (Tomorrow.io is paid, could reserve for premium)
+- **Why does the codebase use ~2.1% per 1000ft when Titleist uses 1.16%?** Is the higher value intentional to account for secondary effects, or should it be adjusted?
+
+- **Is the ALTITUDE_EFFECTS lookup table still needed?** It appears unused in the current environmental factor calculation which relies on air density directly.
+
+- **What pressure value does the weather service provide?** Need to verify if Open-Meteo's `surface_pressure` is being used correctly as station pressure.

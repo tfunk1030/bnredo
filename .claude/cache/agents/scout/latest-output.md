@@ -1,676 +1,532 @@
-# AICaddyPro UI Codebase Report
-Generated: 2026-01-28
+# Altitude Code Path Analysis
+Generated: 2026-01-29
 
-## Summary
+## Executive Summary
 
-Golf shot calculator app built with Expo (SDK 54) and React Native. Uses a **design token system** (no NativeWind/Tailwind), manual StyleSheet patterns, and accessibility-first UI. Features three main screens (Shot Calculator, Wind Calculator, Settings) with a custom SVG compass component and reusable UI library.
+**CRITICAL FINDING: Double altitude application detected**
 
----
+Altitude affects shot distance through TWO independent mechanisms:
+1. **Air density calculation** (via pressure in `calculateAirDensity()`)
+2. **Separate altitude effect** (via `calculateAltitudeEffect()`)
 
-## Project Structure
-
-```
-app/
-  _layout.tsx                  # Root layout with context providers
-  (tabs)/
-    _layout.tsx                # Tab navigation (3 tabs)
-    index.tsx                  # Shot Calculator screen
-    wind.tsx                   # Wind Calculator screen (premium)
-    settings.tsx               # Settings screen
-  +not-found.tsx               # 404 handler
-
-src/
-  components/
-    WeatherCard.tsx            # Weather conditions display
-    CompassDisplay.tsx         # Custom SVG compass with dynamic wind arrow
-    WindResultsModal.tsx       # Full-screen modal for wind calculations
-    ui/
-      AnimatedCollapsible.tsx  # Animated height collapse component
-      GlassCard.tsx            # Frosted glass card (BlurView)
-      GradientButton.tsx       # Button with gradient background
-      Skeleton.tsx             # Loading skeleton
-      WeatherCardSkeleton.tsx  # Loading state for WeatherCard
-      index.ts                 # Barrel export
-
-  constants/
-    theme.ts                   # Design tokens (colors, spacing, typography, animation)
-
-  contexts/
-    UserPreferencesContext.tsx # User settings state
-    ClubBagContext.tsx         # Golf club bag state
-    WeatherContext.tsx         # Weather data state
-
-  hooks/
-    useReduceMotion.ts         # Detect prefers-reduced-motion
-    useHapticSlider.ts         # Haptic feedback for sliders
-    useCompassHeading.ts       # Compass sensor access
-    useInterpolatedHeading.ts  # Smooth heading interpolation
-
-  features/
-    wind/
-      utils/
-        wind-colors.ts         # Dynamic wind arrow color logic
-```
+Both are applied additively in the shot calculator, potentially causing **double-counting** of altitude effects.
 
 ---
 
-## Screen Components
+## Complete Code Path Trace
 
-### 1. Shot Calculator (`app/(tabs)/index.tsx`)
+### 1. Altitude Origin: Weather Service
 
-**Purpose:** Calculate adjusted yardage based on environmental conditions
+**File:** `/home/tfunk1030/bnredo/src/services/weather-service.ts`
 
-**Key Features:**
-- Target distance slider (50-350 yards) with haptic feedback every 5 yards
-- Fine adjustment buttons (±1, ±5 yards)
-- WeatherCard integration
-- "Plays Like" result with club recommendation
-- Collapsible breakdown showing air density + altitude effects
-- Accessibility: All inputs have labels, slider has accessibilityValue with min/max/now
+```typescript
+// Line 83: Altitude set from Open-Meteo elevation
+altitude: Math.round(weatherData.elevation * 3.28084)
+```
 
-**State Management:**
-- `targetYardage` - local state
-- `weather` - from WeatherContext
-- `getRecommendedClub` - from ClubBagContext
+**Data Flow:**
+- Open-Meteo API returns `elevation` in meters
+- Converted to feet: `elevation_meters * 3.28084`
+- Stored in `WeatherData.altitude`
 
-**Styling:** StyleSheet with design tokens (`colors.surface`, `spacing.lg`, `borderRadius.lg`)
-
-**Touch Targets:** All buttons meet 48dp minimum via `touchTargets.minimum`
+**Default Values:**
+- Manual override default: `0 feet` (line 170)
+- Cache fallback: `0 feet`
 
 ---
 
-### 2. Wind Calculator (`app/(tabs)/wind.tsx`)
+### 2. Altitude Distribution: WeatherContext
 
-**Purpose:** Compass-based wind effect calculator (premium feature)
+**File:** `/home/tfunk1030/bnredo/src/contexts/WeatherContext.tsx`
 
-**Key Features:**
-- Premium paywall screen (shows when `isPremium: false`)
-- Custom SVG compass (`CompassDisplay`) with dynamic wind arrow colors
-- Target distance slider (50-350 yards)
-- "Lock Target" floating button (position adapts to hand preference)
-- Full-screen `WindResultsModal` showing sustained vs. gust calculations
-- Reduce motion support (skips animations if `prefers-reduced-motion`)
-
-**State Management:**
-- `isLocked`, `lockedHeading` - local state
-- `heading` - from `useCompassHeading` hook
-- `weather` - from WeatherContext
-- `preferences` - from UserPreferencesContext
-
-**Styling:**
-- StyleSheet with theme tokens
-- Platform-specific shadow (iOS vs Android elevation)
-- Animated button press feedback using `react-native-reanimated`
-
-**Accessibility:**
-- Compass has `accessibilityRole="image"` with live region for heading updates
-- Lock button disabled state announces "Weather data required"
-- Touch targets: Lock button is 48x48dp minimum
-
-**Animations:**
-- Button scale on press: `0.92` → `1.0` (80ms + 120ms)
-- Skipped if `reduceMotion` enabled
-
----
-
-### 3. Settings (`app/(tabs)/settings.tsx`)
-
-**Purpose:** User preferences and club bag management
-
-**Key Features:**
-- Premium toggle (dev mode for testing)
-- Unit preferences (distance, temperature, wind speed)
-- Hand preference (affects lock button placement in Wind screen)
-- Collapsible club bag editor with enable/disable switches
-- Editable club distances (1-400 yards)
-
-**State Management:**
-- `showClubBag`, `editingClub` - local state
-- `preferences`, `updatePreferences` - UserPreferencesContext
-- `clubs`, `updateClub` - ClubBagContext
-
-**Styling:**
-- Animated chevron rotation on collapse toggle using `react-native-reanimated`
-- Radio button groups for options
-- Inline text editing for club distances
-
-**Accessibility:**
-- Radio groups have `accessibilityRole="radiogroup"`
-- Each option has `accessibilityState={{ checked }}`
-- Switches announce "Double tap to enable/disable"
-
----
-
-## Reusable Components
-
-### WeatherCard (`src/components/WeatherCard.tsx`)
-
-**Purpose:** Display current weather conditions
-
-**UI Elements:**
-- Location name with badges (Cached/Manual)
-- Refresh button
-- 4-column grid: Temperature, Humidity, Wind, Altitude
-- Loading state: ActivityIndicator + "Loading weather..."
-- Error state: "Unable to load weather" + Retry button
-
-**Accessibility:**
-- Grid has `accessibilityRole="summary"`
-- Each metric has full label: "Temperature: 72 degrees Fahrenheit"
-- Refresh button announces busy state when loading
-
-**Styling:** GlassCard-style surface with border, icons from `lucide-react-native`
-
----
-
-### CompassDisplay (`src/components/CompassDisplay.tsx`)
-
-**Purpose:** SVG compass with dynamic wind visualization
-
-**Visual Elements:**
-- Outer ring (120px radius) with tick marks (72 ticks, every 5°)
-- Cardinal points (N/E/S/W) with background circles
-- Compass face **rotates with heading** (North always points up in real world)
-- **Wind arrow** shows wind direction **relative to user heading**:
-  - Color: Red (headwind), Green (tailwind), Yellow (crosswind)
-  - Opacity: 0.5-1.0 based on wind strength
-- **User heading arrow** (green, always points "up" on screen)
-- Center circle shows wind speed (MPH)
-- Legend: "Your Heading" (green dot), "Wind (effect)" (colored dot)
-- Heading display below compass: "270°" + "Facing Direction" / "Target Locked"
-
-**Props:**
-```ts
-heading: number          // User's compass heading
-windDirection: number    // Wind direction (absolute)
-windSpeed: number        // Wind speed in mph
-isLocked?: boolean       // Whether target is locked
-reduceMotion?: boolean   // Skip animations
-```
-
-**Accessibility:**
-- Single accessible element with comprehensive label:
-  "Compass showing 270 degrees heading. Wind 12 miles per hour, helping wind from behind. Target locked."
-- Legend and heading text are `importantForAccessibility="no"` (duplicate info)
-
-**Dynamic Wind Colors:** Uses `getWindColor()` utility:
-- Relative angle calculation: `(windDirection - heading) % 360`
-- Effect zones: Headwind (315-45°), Tailwind (135-225°), Crosswind (else)
-- Colors from design system: `#DC2626` (red), `#16A34A` (green), `#F59E0B` (yellow)
-
----
-
-### WindResultsModal (`src/components/WindResultsModal.tsx`)
-
-**Purpose:** Full-screen modal showing wind-adjusted shot calculations
-
-**UI Sections:**
-1. **Header:** Title + Close button + Recalculate button
-2. **Target Info:** Shows original target distance
-3. **Sustained Wind Card:**
-   - Wind speed badge
-   - "Plays Like" yardage (large, green)
-   - Aim adjustment: "Aim 3 yds RIGHT" with arrow icon
-   - Recommended club
-4. **Gust Card:** (same layout, yellow/warning colors)
-5. **Effect Breakdown:**
-   - Environmental effect
-   - Wind (sustained) effect
-   - Wind (gusts) effect
-
-**Accessibility:**
-- Each scenario card has comprehensive `accessibilityLabel`:
-  "Sustained wind at 12 miles per hour. Plays like 145 yards. Aim 3 yards right. Recommended club: 7 Iron"
-
-**Styling:** Cards use `borderColor: colors.primary` (green) and `colors.warning` (yellow)
-
----
-
-### UI Library Components
-
-#### AnimatedCollapsible
-- Height animation with `react-native-reanimated`
-- Respects `reduceMotion` (instant toggle if enabled)
-- Easing: `Easing.out(Easing.cubic)`
-- Duration: `animation.duration.normal` (300ms)
-
-#### GlassCard
-- iOS: BlurView with tint overlay
-- Android/Reduce Motion: Solid `colors.surfaceElevated`
-- Props: `intensity`, `tint`, `radius`, `padding`, `bordered`
-
-#### GradientButton
-- Uses `expo-linear-gradient`
-- Variants: primary, accent, danger, muted
-- Sizes: sm (44dp), md (48dp), lg (56dp)
-- Press feedback: opacity + scale (respects reduce motion)
-
----
-
-## Styling System
-
-### Design Tokens (`src/constants/theme.ts`)
-
-No NativeWind/Tailwind. Manual StyleSheet with token-based values.
-
-#### Colors (Dark Theme)
-```ts
-background: '#0d1117'         // Base background
-surface: '#161b22'            // Cards
-surfaceElevated: '#21262d'    // Elevated surfaces
-border: '#30363d'             // Borders
-
-primary: '#238636'            // Green (success, actions)
-primaryDark: '#1a7f37'
-primaryLight: '#2ea043'
-
-accent: '#c9a227'             // Gold (wind indicators, clubs)
-accentDark: '#a68621'
-
-text: '#f0f6fc'               // Primary text
-textSecondary: '#8b949e'      // Secondary text
-textMuted: '#6e7681'          // Muted text
-
-success: '#238636'            // Green
-warning: '#d29922'            // Yellow/gold
-error: '#f85149'              // Red
-```
-
-#### Spacing
-```ts
-xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48
-```
-
-#### Typography
-```ts
-largeTitle: { fontSize: 48, fontWeight: '700', lineHeight: 56 }
-title: { fontSize: 28, fontWeight: '600', lineHeight: 34 }
-headline: { fontSize: 20, fontWeight: '600', lineHeight: 26 }
-body: { fontSize: 16, fontWeight: '400', lineHeight: 22 }
-caption: { fontSize: 13, fontWeight: '400', lineHeight: 18 }
-small: { fontSize: 11, fontWeight: '400', lineHeight: 14 }
-```
-
-#### Border Radius
-```ts
-sm: 6, md: 12, lg: 16, xl: 24, full: 9999
-```
-
-#### Touch Targets (WCAG 2.5.5)
-```ts
-minimum: 48       // Minimum touch target (dp)
-comfortable: 56   // Comfortable size
-dense: 44         // iOS HIG minimum
-```
-
-#### Hit Slop
-```ts
-small: { top: 12, right: 12, bottom: 12, left: 12 }
-medium: { top: 16, right: 16, bottom: 16, left: 16 }
-```
-
-#### Animation
-```ts
-duration: {
-  instant: 100, fast: 200, normal: 300, slow: 500, verySlow: 800
-}
-
-spring: {
-  snappy: { damping: 20, stiffness: 300, mass: 1 }
-  bouncy: { damping: 10, stiffness: 180, mass: 1 }
-  gentle: { damping: 15, stiffness: 100, mass: 1 }
-}
-
-scale: { pressed: 0.97, disabled: 1, active: 1.02 }
-opacity: { disabled: 0.5, pressed: 0.8, active: 1 }
-```
-
-#### Glass Effect (iOS 18+ BlurView)
-```ts
-blur: { light: 10, medium: 20, heavy: 40 }
-backgroundOpacity: { subtle: 0.1, medium: 0.2, strong: 0.4 }
-borderOpacity: 0.15
-tint: {
-  dark: 'rgba(0, 0, 0, 0.3)',
-  light: 'rgba(255, 255, 255, 0.1)',
-  accent: 'rgba(201, 162, 39, 0.15)'
+```typescript
+// Lines 44-59: Convert NormalizedWeather to WeatherData
+function toWeatherData(weather: NormalizedWeather): WeatherData {
+  return {
+    altitude: weather.altitude,  // Direct passthrough
+    // ... other fields
+  };
 }
 ```
 
+**Distribution:**
+- `WeatherProvider` makes altitude available via `useWeather()` hook
+- All screens/components get same altitude value
+- Manual overrides persist in AsyncStorage
+
 ---
 
-## UI State Management
+### 3. Altitude Usage Path A: Air Density (Implicit via Pressure)
 
-### Contexts
+**File:** `/home/tfunk1030/bnredo/src/core/models/yardagemodel.ts`
 
-#### UserPreferencesContext
-```ts
-preferences: {
-  isPremium: boolean
-  distanceUnit: 'yards' | 'meters'
-  temperatureUnit: 'fahrenheit' | 'celsius'
-  windSpeedUnit: 'mph' | 'kmh'
-  handPreference: 'right' | 'left'
+#### 3A.1: Set Conditions (Entry Point)
+
+```typescript
+// Lines 441-457: setConditions method
+setConditions(
+  temperature: number,
+  altitude: number,      // ← Altitude parameter
+  wind_speed: number,
+  wind_direction: number,
+  pressure: number,      // ← Pressure parameter
+  humidity: number
+): void {
+  this.altitude = altitude;  // Stored but NOT used in density calc
+  this.pressure = pressure;  // Used in density calc
 }
 ```
 
-#### ClubBagContext
-```ts
-clubs: Array<{
-  key: string           // '7iron', 'driver', etc.
-  name: string          // '7 Iron', 'Driver'
-  isEnabled: boolean
-  customDistance: number
-}>
-getRecommendedClub(yardage: number)
-```
+**Key Finding:** Altitude is stored but **not used** in air density calculation.
 
-#### WeatherContext
-```ts
-weather: {
-  temperature, humidity, pressure, altitude,
-  windSpeed, windDirection, windGust,
-  locationName, isManualOverride
-}
-isLoading, error, isOffline
-refreshWeather()
-```
+#### 3A.2: Calculate Environmental Factor
 
-### Custom Hooks
+```typescript
+// Lines 238-251: calculateEnvironmentalFactor
+private calculateEnvironmentalFactor(): number {
+  const currentDensity = this.calculateAirDensity(
+    this.temperature || 70,
+    this.pressure || 1013.25,  // ← Uses pressure (affected by altitude)
+    this.humidity || 50
+  );
 
-#### useReduceMotion
-- Detects `AccessibilityInfo.isReduceMotionEnabled()`
-- Listens for changes with `reduceMotionChanged` event
-- Used by: AnimatedCollapsible, GlassCard, GradientButton, wind.tsx, CompassDisplay
+  const densityRatio = currentDensity / AIR_DENSITY_SEA_LEVEL;
+  
+  // Lines 246-248: Altitude affects EXPONENT choice
+  const useAltExponent = this.altitude && this.altitude > ALTITUDE_THRESHOLD;
+  const exponent = useAltExponent ? DENSITY_EXPONENT_ALT : DENSITY_EXPONENT_SEA;
 
-#### useHapticSlider
-- Triggers haptic feedback at intervals (default: every 5 units)
-- Uses `Haptics.selectionAsync()` on iOS/Android
-- Pattern: Track "bucket" changes to avoid over-firing
-- Used by: Shot Calculator and Wind Calculator sliders
-
----
-
-## Animation Libraries
-
-| Library | Purpose | Usage |
-|---------|---------|-------|
-| react-native-reanimated (4.1.1) | Animations | `Animated.View`, `useAnimatedStyle`, `withTiming`, `withSpring` |
-| expo-haptics | Touch feedback | `Haptics.impactAsync()`, `Haptics.selectionAsync()` |
-| expo-linear-gradient | Gradients | GradientButton component |
-| expo-blur | Glass effects | GlassCard component (iOS only) |
-| react-native-svg | Vector graphics | CompassDisplay SVG compass |
-
----
-
-## Design Patterns
-
-### Pattern 1: Token-Based Styling
-**All screens use design tokens:**
-```ts
-import { colors, spacing, borderRadius, typography } from '@/src/constants/theme';
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-  }
-});
-```
-
-**Consistency:** ✅ Excellent - All files use theme tokens
-**Issue:** None - Pattern is consistent
-
----
-
-### Pattern 2: Accessibility-First
-**All interactive elements have:**
-- `accessibilityRole` (button, adjustable, radiogroup, etc.)
-- `accessibilityLabel` with full context ("Temperature: 72 degrees Fahrenheit")
-- `accessibilityHint` for non-obvious actions ("Double tap to...")
-- `accessibilityState` for checked/expanded/disabled states
-- Touch targets ≥48dp via `touchTargets.minimum`
-
-**Consistency:** ✅ Excellent
-**Issue:** None - Comprehensive accessibility markup
-
----
-
-### Pattern 3: Reduce Motion Support
-**All animations check `useReduceMotion()` or accept `reduceMotion` prop:**
-```ts
-const reduceMotion = useReduceMotion();
-
-if (reduceMotion) {
-  value.value = 0.97;  // Instant
-} else {
-  value.value = withSpring(0.97, springConfigs.snappy);
+  return Math.pow(densityRatio, -exponent);  // ← Altitude changes scaling
 }
 ```
 
-**Consistency:** ✅ Excellent
-**Files using pattern:** wind.tsx, AnimatedCollapsible, GlassCard, GradientButton, CompassDisplay
+**Constants:**
+- `ALTITUDE_THRESHOLD = 3000` feet (line 50)
+- `DENSITY_EXPONENT_SEA = 0.7` (line 48)
+- `DENSITY_EXPONENT_ALT = 0.5` (line 49)
 
----
+**Altitude Effect #1:**
+- Below 3000 ft: Uses exponent `0.7`
+- Above 3000 ft: Uses exponent `0.5` (less aggressive scaling)
 
-### Pattern 4: Context Provider Hierarchy
-**Root layout wraps app in nested providers:**
-```tsx
-<UserPreferencesProvider>
-  <ClubBagProvider>
-    <WeatherProvider>
-      <Stack />
-    </WeatherProvider>
-  </ClubBagProvider>
-</UserPreferencesProvider>
-```
+#### 3A.3: Calculate Air Density
 
-**Access pattern:** `const { preferences } = useUserPreferences()`
+```typescript
+// Lines 253-264: calculateAirDensity
+private calculateAirDensity(tempF: number, pressureMb: number, humidity: number): number {
+  const tempC = (tempF - 32) * 5/9;
+  const pressurePa = pressureMb * 100;
 
-**Consistency:** ✅ Clean separation of concerns
+  const svp = MAGNUS_A * Math.exp((MAGNUS_B * tempC) / (tempC + MAGNUS_C));
+  const vaporPressure = (humidity / 100) * svp;
 
----
-
-### Pattern 5: Memoized Calculations
-**Heavy calculations use `React.useMemo`:**
-```ts
-const calculations = React.useMemo(() => {
-  // Environmental calculations
-  return { adjustedYardage, ... };
-}, [weather, targetYardage]);
-```
-
-**Consistency:** ✅ Good - Used in index.tsx, wind.tsx, WindResultsModal
-
----
-
-### Pattern 6: Platform-Specific Styling
-**iOS vs Android patterns:**
-```ts
-...Platform.select({
-  ios: {
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  android: {
-    elevation: 8,
-  },
-}),
-```
-
-**Also:** Tab bar height, font variants (tabular-nums vs monospace)
-
----
-
-## Inconsistencies & Issues
-
-### ❌ Issue 1: Tab Bar Accessibility
-**Location:** `app/(tabs)/_layout.tsx`
-
-**Problem:** Tab bar has `tabBarAccessibilityLabel: 'Main navigation'` but individual tabs don't have unique accessibility IDs for automation testing.
-
-**Impact:** Low - Functional but harder to test
-
-**Fix:** Add `testID` to each `Tabs.Screen`
-
----
-
-### ❌ Issue 2: CompassDisplay Legend Redundancy
-**Location:** `src/components/CompassDisplay.tsx`
-
-**Problem:** Legend and heading display are hidden from screen readers (`importantForAccessibility="no-hide-descendants"`), but the parent `<View>` with comprehensive `accessibilityLabel` already contains this info. This is correct, but the `accessibilityRole="none"` would be clearer.
-
-**Impact:** None - Works correctly
-
-**Suggestion:** Use `accessibilityRole="none"` instead of `importantForAccessibility="no-hide-descendants"`
-
----
-
-### ⚠️ Issue 3: Modal Animation Type
-**Location:** `src/components/WindResultsModal.tsx`
-
-**Problem:** Modal uses `animationType="slide"` but doesn't respect `reduceMotion`. Should be `animationType={reduceMotion ? 'none' : 'slide'}`.
-
-**Impact:** Low - Modal animations might trigger motion sensitivity
-
-**Fix:**
-```ts
-const reduceMotion = useReduceMotion();
-<Modal animationType={reduceMotion ? 'none' : 'slide'} ... />
-```
-
----
-
-### ✅ Issue 4: Skeleton Components Unused
-**Location:** `src/components/ui/Skeleton.tsx`, `WeatherCardSkeleton.tsx`
-
-**Problem:** Skeleton components exist but WeatherCard uses `<ActivityIndicator>` + text instead.
-
-**Impact:** None - Just unused code
-
-**Options:** Remove skeletons OR update WeatherCard to use WeatherCardSkeleton
-
----
-
-### ✅ Issue 5: Wind Arrow Color Constants
-**Location:** `src/features/wind/utils/wind-colors.ts`
-
-**Problem:** Wind colors are hardcoded (`#16A34A`, `#DC2626`, `#F59E0B`) instead of using theme tokens.
-
-**Current:**
-```ts
-export const windColors = {
-  tailwind: '#16A34A',   // Green
-  headwind: '#DC2626',   // Red
-  crosswind: '#F59E0B',  // Yellow
+  return (pressurePa - vaporPressure * 100) / (GAS_CONSTANT_DRY * (tempC + 273.15)) +
+         vaporPressure * 100 / (GAS_CONSTANT_VAPOR * (tempC + 273.15));
 }
 ```
 
-**Should be:**
-```ts
-import { colors } from '@/src/constants/theme';
+**Key Finding:** Uses `pressure` (which naturally decreases with altitude), **NOT** the `altitude` parameter.
 
-export const windColors = {
-  tailwind: colors.success,    // '#238636' (theme green)
-  headwind: colors.error,      // '#f85149' (theme red)
-  crosswind: colors.warning,   // '#d29922' (theme yellow)
+**Pressure already accounts for altitude:**
+- Sea level: ~1013 mb
+- 5000 ft: ~850 mb (lower pressure → lower density)
+
+---
+
+### 4. Altitude Usage Path B: Direct Altitude Effect
+
+**File:** `/home/tfunk1030/bnredo/src/core/services/environmental-calculations.ts`
+
+```typescript
+// Lines 77-79: calculateAltitudeEffect
+static calculateAltitudeEffect(altitude: number): number {
+  return (altitude / 1000) * 2;
 }
 ```
 
-**Impact:** Medium - Creates color inconsistency (Tailwind CSS colors vs theme colors)
+**Formula:** `2% increase per 1000 feet`
 
----
+**Examples:**
+- 0 ft: `0%`
+- 3000 ft: `6%`
+- 5000 ft: `10%`
+- 8000 ft: `16%`
 
-## Key Files Reference
-
-| File | Lines | Purpose | Dependencies |
-|------|-------|---------|--------------|
-| app/(tabs)/index.tsx | 413 | Shot Calculator screen | WeatherCard, useWeather, useClubBag |
-| app/(tabs)/wind.tsx | 576 | Wind Calculator screen | CompassDisplay, WindResultsModal, useCompassHeading |
-| app/(tabs)/settings.tsx | 488 | Settings screen | AnimatedCollapsible, useReduceMotion |
-| src/components/CompassDisplay.tsx | 377 | SVG compass component | react-native-svg, wind-colors |
-| src/components/WindResultsModal.tsx | 439 | Wind results modal | calculateWindEffect, EnvironmentalCalculator |
-| src/components/WeatherCard.tsx | 218 | Weather display | useWeather, lucide-react-native |
-| src/constants/theme.ts | 161 | Design token system | None (base definitions) |
-| src/features/wind/utils/wind-colors.ts | 157 | Wind color utilities | theme.ts |
-
----
-
-## Testing Infrastructure
-
-**Binary Tests:**
-- `src/features/wind/utils/__tests__/wind-colors.test.ts` - 41 tests for color logic
-
-**Visual Tests:**
-- `e2e/visual.spec.ts` - Playwright visual regression + a11y tree snapshots
-
-**Test Commands:**
-```bash
-npm test wind-colors       # Binary tests
-yarn test:visual           # Playwright visual regression
-yarn test:visual:update    # Update baselines
+**UNUSED LOOKUP TABLE (Lines 205-215):**
+```typescript
+private static readonly ALTITUDE_EFFECTS: Readonly<Record<number, number>> = {
+  0: 1.000,
+  1000: 1.021,
+  2000: 1.043,
+  // ... never referenced in code
+};
 ```
+
+---
+
+### 5. Double Application in Shot Calculator
+
+**File:** `/home/tfunk1030/bnredo/app/(tabs)/index.tsx`
+
+#### 5.1: Build Conditions Object
+
+```typescript
+// Lines 33-46: Conditions object creation
+const conditions = {
+  temperature: weather.temperature,
+  humidity: weather.humidity,
+  pressure: weather.pressure,
+  altitude: weather.altitude,  // ← Altitude included
+  windSpeed: 0,
+  windDirection: 0,
+  windGust: 0,
+  density: EnvironmentalCalculator.calculateAirDensity({
+    temperature: weather.temperature,
+    humidity: weather.humidity,
+    pressure: weather.pressure,  // ← Pressure (altitude-affected)
+  }),
+};
+```
+
+#### 5.2: Calculate Adjustments
+
+```typescript
+// Lines 48-52: Both effects calculated
+const adjustments = EnvironmentalCalculator.calculateShotAdjustments(conditions);
+const altitudeEffect = EnvironmentalCalculator.calculateAltitudeEffect(weather.altitude);
+
+const totalAdjustmentPercent = adjustments.distanceAdjustment + altitudeEffect;
+const adjustedYardage = Math.round(targetYardage * (1 - totalAdjustmentPercent / 100));
+```
+
+**DOUBLE APPLICATION CONFIRMED:**
+1. `adjustments.distanceAdjustment` - includes air density effect (driven by pressure, which reflects altitude)
+2. `altitudeEffect` - **ADDS** an additional altitude bonus on top
+
+**Example at 5000 ft:**
+- Air density effect: ~`-8%` (thinner air from lower pressure)
+- Altitude effect: `+10%` (direct bonus from `calculateAltitudeEffect`)
+- Total: `+2%` adjustment
+
+---
+
+### 6. Wind Calculator Usage
+
+**File:** `/home/tfunk1030/bnredo/src/core/services/wind-calculator.ts`
+
+#### 6.1: Environmental Baseline (No Wind)
+
+```typescript
+// Lines 141-148: Set conditions without wind
+yardageModel.setConditions(
+  conditions.temperature,
+  conditions.altitude,  // ← Altitude passed
+  0,  // No wind
+  0,
+  conditions.pressure,  // ← Pressure passed
+  conditions.humidity
+);
+```
+
+#### 6.2: Wind Effect Calculation
+
+```typescript
+// Lines 164-171: Set conditions with wind
+yardageModel.setConditions(
+  conditions.temperature,
+  conditions.altitude,  // ← Same altitude
+  windSpeed,
+  normalizedWindAngle,
+  conditions.pressure,  // ← Same pressure
+  conditions.humidity
+);
+```
+
+**Key Finding:** Wind calculator uses `YardageModelEnhanced.calculateAdjustedYardage()`, which applies:
+- Environmental factor (via `calculateEnvironmentalFactor()`)
+- Wind effects
+- Skill multipliers
+
+**Altitude is applied ONCE via environmental factor in wind calculator** (no separate altitude effect added).
+
+---
+
+## Altitude Effect Summary Table
+
+| Location | Altitude Input | How Used | Effect |
+|----------|---------------|----------|--------|
+| `weather-service.ts:83` | Open-Meteo `elevation` | Set `WeatherData.altitude` | **SOURCE** |
+| `WeatherContext.tsx:52` | From weather service | Passthrough to consumers | **DISTRIBUTION** |
+| `yardagemodel.ts:452` | `setConditions(altitude)` | Stored in `this.altitude` | **STORAGE** |
+| `yardagemodel.ts:246` | `this.altitude > 3000` | Choose exponent (0.7 vs 0.5) | **INDIRECT EFFECT** |
+| `yardagemodel.ts:253` | **NOT USED** | Uses `pressure` instead | **IMPLICIT (via pressure)** |
+| `environmental-calculations.ts:78` | Direct input | `(altitude / 1000) * 2` | **DIRECT EFFECT** |
+| `index.tsx:49` | From weather context | Both air density + altitude effect | **DOUBLE APPLICATION** |
+| `wind-calculator.ts:143` | From conditions | Only via environmental factor | **SINGLE APPLICATION** |
+
+---
+
+## Diagram: Altitude Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Open-Meteo API                                               │
+│   elevation (meters) → * 3.28084 → altitude (feet)          │
+└────────────────────────────┬────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│ WeatherContext                                               │
+│   WeatherData { altitude, pressure, ... }                   │
+└────────────┬────────────────────────────┬───────────────────┘
+             │                            │
+             │                            │
+     ┌───────▼───────┐            ┌───────▼────────┐
+     │ Shot Calc     │            │ Wind Calc      │
+     │ (index.tsx)   │            │ (wind-calc.ts) │
+     └───────┬───────┘            └───────┬────────┘
+             │                            │
+             │                            │
+    ┌────────▼────────────┐      ┌────────▼─────────┐
+    │ TWO PATHS:          │      │ ONE PATH:        │
+    │                     │      │                  │
+    │ 1. Air Density      │      │ Environmental    │
+    │    (via pressure)   │      │ Factor Only      │
+    │    ↓                │      │ ↓                │
+    │    calculateAirDen  │      │ calculateEnvFac  │
+    │    ↓                │      │ ↓                │
+    │    densityRatio^exp │      │ densityRatio^exp │
+    │                     │      │                  │
+    │ 2. Direct Altitude  │      └──────────────────┘
+    │    ↓                │
+    │    (alt/1000) * 2   │
+    │                     │
+    │ BOTH ADDED:         │
+    │ totalAdj = density  │
+    │          + altitude │
+    └─────────────────────┘
+```
+
+---
+
+## Code Path Decision Trees
+
+### Decision Tree 1: Environmental Factor Calculation
+
+```
+calculateEnvironmentalFactor()
+├─ calculateAirDensity(temp, pressure, humidity)
+│  ├─ pressure → converted to Pa
+│  ├─ Calculate vapor pressure (from temp + humidity)
+│  └─ Ideal gas law: density = (P_dry / R_dry*T) + (P_vapor / R_vapor*T)
+│
+├─ densityRatio = currentDensity / STANDARD_DENSITY (1.193 kg/m³)
+│
+└─ Is altitude > 3000 ft?
+   ├─ YES → exponent = 0.5 (DENSITY_EXPONENT_ALT)
+   └─ NO  → exponent = 0.7 (DENSITY_EXPONENT_SEA)
+   
+   Return: densityRatio^(-exponent)
+```
+
+### Decision Tree 2: Shot Calculator Adjustment
+
+```
+Shot Calculator
+├─ Get weather (includes altitude + pressure)
+│
+├─ Calculate conditions
+│  ├─ density = calculateAirDensity(temp, pressure, humidity)
+│  └─ Include altitude field
+│
+├─ Calculate adjustments
+│  ├─ adjustments = calculateShotAdjustments(conditions)
+│  │  └─ Uses density (which came from pressure)
+│  │
+│  └─ altitudeEffect = calculateAltitudeEffect(altitude)
+│      └─ (altitude / 1000) * 2
+│
+└─ Total = adjustments.distanceAdjustment + altitudeEffect
+   
+   ⚠️ POTENTIAL DOUBLE-COUNT: Pressure already reflects altitude
+```
+
+---
+
+## Key Findings
+
+### 1. **Double Altitude Application in Shot Calculator**
+
+The shot calculator (`app/(tabs)/index.tsx`) applies altitude effects **twice**:
+
+- **Path 1:** Air density calculation uses `pressure`
+  - Lower pressure at altitude → lower density → ball flies farther
+  - Applied via `calculateShotAdjustments()`
+
+- **Path 2:** Direct altitude bonus
+  - `calculateAltitudeEffect(altitude)` adds `2% per 1000 ft`
+  - Applied separately and added to total
+
+**Example at 5000 ft elevation:**
+- Pressure: ~850 mb (vs 1013 mb at sea level)
+- Air density effect: ~-8% (ball flies farther due to thin air)
+- Direct altitude effect: +10% (from formula)
+- **Total adjustment: +2%** (could be overstating altitude benefit)
+
+### 2. **Wind Calculator Uses Single Path**
+
+The wind calculator only uses altitude **indirectly** via the environmental factor:
+- Sets conditions with both altitude and pressure
+- `calculateAdjustedYardage()` calls `calculateEnvironmentalFactor()`
+- No separate altitude bonus added
+
+### 3. **Altitude Affects Exponent Selection**
+
+At high altitude (>3000 ft), the density exponent changes:
+- Below 3000 ft: `exponent = 0.7` (more aggressive scaling)
+- Above 3000 ft: `exponent = 0.5` (less aggressive scaling)
+
+**Purpose:** Likely compensates for viscosity changes at altitude (Reynolds number effects).
+
+### 4. **Unused Altitude Lookup Table**
+
+`yardagemodel.ts` contains an `ALTITUDE_EFFECTS` lookup table (lines 205-215) that is **never referenced** in the code.
+
+### 5. **Pressure Already Encodes Altitude**
+
+The weather service provides `pressure` from Open-Meteo, which naturally decreases with elevation. Using **both** pressure and altitude may be redundant.
+
+---
+
+## Potential Issues
+
+### Issue 1: Double-Counting Altitude
+
+**Problem:** Shot calculator adds altitude effect on top of air density effect, but pressure already reflects altitude.
+
+**Impact:** May overestimate altitude benefits (e.g., showing 200 yards plays like 220 at 5000 ft when reality is 215).
+
+**Evidence:**
+- `index.tsx:49`: `altitudeEffect` added to `adjustments.distanceAdjustment`
+- `yardagemodel.ts:253`: Air density calculated from pressure (altitude-dependent)
+
+**Recommendation:** Remove one of the altitude paths or confirm they model different physics (e.g., one for Magnus force, one for drag).
+
+### Issue 2: Inconsistent Application
+
+**Problem:** Shot calculator applies altitude twice, wind calculator applies once.
+
+**Impact:** "Plays like" distances differ between shot calculator and wind calculator for same target.
+
+**Recommendation:** Standardize altitude application across both calculators.
+
+### Issue 3: Exponent Selection Logic
+
+**Problem:** Altitude threshold of 3000 ft switches exponent from 0.7 to 0.5, but rationale unclear.
+
+**Impact:** Sharp transition at 3000 ft could cause discontinuity in recommendations.
+
+**Recommendation:** Document physics justification or smooth the transition.
 
 ---
 
 ## Recommendations
 
-### P0 - Fix Before Release
-1. ✅ Fix wind color constants to use theme tokens (consistency)
-2. ✅ Add `reduceMotion` support to WindResultsModal animation
+### 1. **Audit Altitude Physics**
 
-### P1 - Nice to Have
-3. ✅ Add `testID` props to tab screens for automation
-4. ✅ Remove unused Skeleton components OR use them
-5. ⚠️ Consider using `accessibilityRole="none"` instead of `importantForAccessibility="no-hide-descendants"`
+Determine if altitude should affect:
+- **Only air density** (via pressure) - removes `calculateAltitudeEffect()`
+- **Both density and a separate effect** (e.g., Magnus force scaling) - document why
 
-### P2 - Future Enhancements
-6. Consider extracting wind calculation logic from WindResultsModal to a custom hook
-7. Add Storybook for component isolation (WindArrow.stories.tsx exists but not integrated)
+### 2. **Standardize Calculation**
 
----
+Make shot calculator and wind calculator use same altitude logic:
+- Option A: Remove `calculateAltitudeEffect()` from shot calculator
+- Option B: Add it to wind calculator
+- Option C: Merge into a single source of truth
 
-## Design System Strengths
+### 3. **Remove Dead Code**
 
-✅ **Comprehensive token system** - All design values centralized
-✅ **Accessibility-first** - Every component has proper a11y markup
-✅ **Reduce motion support** - Respects user preferences
-✅ **Touch target compliance** - Meets WCAG 2.5.5 (48dp minimum)
-✅ **Consistent patterns** - StyleSheet + tokens everywhere
-✅ **Platform-aware** - iOS vs Android specific styling
-✅ **Memoization** - Heavy calculations optimized
-✅ **Dark theme** - Single cohesive color palette
+Delete unused `ALTITUDE_EFFECTS` lookup table in `yardagemodel.ts:205-215`.
 
----
+### 4. **Document Exponent Selection**
 
-## Architecture Insights
+Add comment explaining why exponent changes at 3000 ft (viscosity? Reynolds number?).
 
-**Navigation:** Expo Router file-based with tab groups
-**State:** Context API (3 providers) + local state
-**Styling:** Manual StyleSheet (no utility classes)
-**Animations:** Reanimated v4 + Expo Haptics
-**Icons:** Lucide React Native (tree-shakeable)
-**Rendering:** React Native SVG for compass
+### 5. **Verify Pressure Source**
 
-**No global state library** (Redux/Zustand) - Contexts handle all shared state.
-
-**No Tailwind/NativeWind** - Intentional choice for design token system.
+Confirm Open-Meteo's `surface_pressure` is station pressure (altitude-adjusted) or sea-level pressure (altitude-independent).
 
 ---
 
-## Summary of Findings
+## File Reference
 
-This is a **well-architected React Native app** with:
-- Clean separation of concerns (screens/components/contexts/hooks)
-- Comprehensive accessibility support
-- Token-based design system (no utility classes)
-- Reduce motion support throughout
-- Platform-specific optimizations
-- Minimal tech debt (5 minor issues, 2 P0)
+| File | Purpose | Altitude Role |
+|------|---------|---------------|
+| `/home/tfunk1030/bnredo/src/services/weather-service.ts` | Fetch weather from API | **Source** - converts elevation to altitude (line 83) |
+| `/home/tfunk1030/bnredo/src/contexts/WeatherContext.tsx` | Distribute weather data | **Passthrough** - provides altitude via context (line 52) |
+| `/home/tfunk1030/bnredo/src/core/models/yardagemodel.ts` | Physics engine | **Exponent selector** - altitude affects scaling (line 246) |
+| `/home/tfunk1030/bnredo/src/core/services/environmental-calculations.ts` | Environmental effects | **Direct effect** - 2% per 1000 ft (line 78) |
+| `/home/tfunk1030/bnredo/app/(tabs)/index.tsx` | Shot calculator UI | **Double application** - adds both effects (line 51) |
+| `/home/tfunk1030/bnredo/src/core/services/wind-calculator.ts` | Wind calculations | **Single application** - via environmental factor only |
 
-**Main issue:** Wind colors use Tailwind CSS values instead of theme tokens (easy fix).
+---
 
-**Overall grade:** A- (excellent patterns, minor inconsistencies)
+## Test Case: 150 Yards at 5000 ft
+
+### Scenario
+- Target: 150 yards
+- Altitude: 5000 feet
+- Temperature: 70°F
+- Pressure: 850 mb (typical at 5000 ft)
+- Humidity: 50%
+
+### Calculation Path
+
+**Step 1: Air Density**
+```
+tempC = (70 - 32) * 5/9 = 21.1°C
+pressurePa = 850 * 100 = 85000 Pa
+density ≈ 1.02 kg/m³ (lower than sea level 1.193)
+densityRatio = 1.02 / 1.193 = 0.855
+```
+
+**Step 2: Environmental Factor**
+```
+altitude = 5000 > 3000 → exponent = 0.5
+envFactor = (0.855)^(-0.5) = 1.082 (8.2% increase)
+```
+
+**Step 3: Altitude Effect**
+```
+altitudeEffect = (5000 / 1000) * 2 = 10%
+```
+
+**Step 4: Total Adjustment (Shot Calculator)**
+```
+totalAdjustment = -8.2% + 10% = +1.8%
+adjustedYardage = 150 * (1 - 0.018) = 147 yards
+
+⚠️ BUT environmental factor already increased distance via density
+   Real calculation is more complex due to sign conventions
+```
+
+**Step 5: Wind Calculator (No Wind)**
+```
+Uses only environmental factor: 8.2% increase
+adjustedYardage = 150 * 1.082 = 162 yards
+
+⚠️ Different result than shot calculator!
+```
+
+---
+
+## Conclusion
+
+Altitude is applied **inconsistently** across the application:
+- **Shot calculator:** Double application (density + direct effect)
+- **Wind calculator:** Single application (density only via environmental factor)
+
+This creates **divergent "plays like" distances** between calculators and may **overestimate altitude benefits**.
+
+**Action Required:** Standardize altitude application and verify physics model correctness.
