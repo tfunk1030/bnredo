@@ -15,7 +15,8 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app uses your location to get local weather conditions for accurate shot calculations.",
         "NSCameraUsageDescription": "This app uses the camera for course scanning features.",
-        "UIBackgroundModes": []
+        "UIBackgroundModes": [],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "web": {
@@ -37,6 +38,7 @@
       "eas": {
         "projectId": "c0d3abcd-9d1b-4924-aeee-ee8b6dfeae45"
       }
-    }
+    },
+    "owner": "tfunk1030"
   }
 }
