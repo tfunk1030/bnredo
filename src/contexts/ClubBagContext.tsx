@@ -1,5 +1,7 @@
 import * as React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '@/src/lib/supabase';
+import { useAuth } from './AuthContext';
 import { DEFAULT_CLUBS } from '@/src/features/settings/utils/club-mapping';
 
 export interface Club {
@@ -33,15 +35,41 @@ function getDefaultClubs(): Club[] {
 }
 
 export function ClubBagProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [clubs, setClubs] = React.useState<Club[]>(getDefaultClubs());
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
     loadClubs();
-  }, []);
+  }, [user]);
 
   const loadClubs = async () => {
+    setIsLoading(true);
     try {
+      // If logged in, try Supabase first
+      if (user) {
+        const { data, error } = await supabase
+          .from('user_clubs')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('sort_order', { ascending: true });
+
+        if (data && data.length > 0 && !error) {
+          const cloudClubs: Club[] = data.map(row => ({
+            key: row.club_key,
+            name: row.club_name,
+            isEnabled: row.is_enabled,
+            customDistance: row.custom_distance,
+            sortOrder: row.sort_order,
+          }));
+          setClubs(cloudClubs);
+          // Also save to local storage as cache
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cloudClubs));
+          return;
+        }
+      }
+
+      // Fall back to local storage
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
@@ -62,7 +90,30 @@ export function ClubBagProvider({ children }: { children: React.ReactNode }) {
         club.key === clubKey ? { ...club, ...updates } : club
       );
       setClubs(newClubs);
+      
+      // Always save to local storage
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newClubs));
+
+      // If logged in, sync to Supabase
+      if (user) {
+        const updatedClub = newClubs.find(c => c.key === clubKey);
+        if (updatedClub) {
+          const { error } = await supabase
+            .from('user_clubs')
+            .upsert({
+              user_id: user.id,
+              club_key: updatedClub.key,
+              club_name: updatedClub.name,
+              is_enabled: updatedClub.isEnabled,
+              custom_distance: updatedClub.customDistance,
+              sort_order: updatedClub.sortOrder,
+            }, { onConflict: 'user_id,club_key' });
+
+          if (error) {
+            console.error('Failed to sync club to cloud:', error);
+          }
+        }
+      }
     } catch (error) {
       console.error('Failed to save club:', error);
     }

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -16,11 +17,12 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronRight, Crown, Check, Cloud, AlertCircle } from 'lucide-react-native';
+import { ChevronRight, Crown, Check, Cloud, AlertCircle, User, LogOut } from 'lucide-react-native';
 import { getProviderStatus } from '@/src/services/weather';
 import { colors, spacing, borderRadius, typography, touchTargets, animation, glass } from '@/src/constants/theme';
 import { AnimatedCollapsible } from '@/src/components/ui';
 import { useReduceMotion } from '@/src/hooks/useReduceMotion';
+import { useAuth } from '@/src/contexts/AuthContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
 import { useClubBag } from '@/src/contexts/ClubBagContext';
 
@@ -28,12 +30,49 @@ type OptionValue = string;
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const { user, signIn, signUp, signOut, isLoading: authLoading } = useAuth();
   const { preferences, updatePreferences } = useUserPreferences();
   const { clubs, updateClub } = useClubBag();
   const [showClubBag, setShowClubBag] = React.useState(false);
   const [editingClub, setEditingClub] = React.useState<string | null>(null);
   const [editDistance, setEditDistance] = React.useState('');
   const reduceMotion = useReduceMotion();
+
+  // Auth form state
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [authMode, setAuthMode] = React.useState<'signin' | 'signup'>('signin');
+  const [authError, setAuthError] = React.useState<string | null>(null);
+  const [authSubmitting, setAuthSubmitting] = React.useState(false);
+
+  const handleAuth = async () => {
+    if (!email || !password) {
+      setAuthError('Please enter email and password');
+      return;
+    }
+    setAuthError(null);
+    setAuthSubmitting(true);
+    
+    const result = authMode === 'signin' 
+      ? await signIn(email, password)
+      : await signUp(email, password);
+    
+    setAuthSubmitting(false);
+    
+    if (result.error) {
+      setAuthError(result.error);
+    } else {
+      setEmail('');
+      setPassword('');
+      if (authMode === 'signup') {
+        setAuthError('Check your email to confirm your account');
+      }
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   // Animated chevron rotation
   const chevronRotation = useSharedValue(0);
@@ -112,9 +151,97 @@ export default function SettingsScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
+        {/* Account Section */}
+        <View style={[styles.section, { marginTop: spacing.lg }]}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          
+          {authLoading ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : user ? (
+            <View style={styles.accountInfo}>
+              <View style={styles.accountHeader}>
+                <User color={colors.primary} size={20} />
+                <View style={styles.accountDetails}>
+                  <Text style={styles.accountEmail}>{user.email}</Text>
+                  <Text style={styles.accountHint}>Data synced to cloud</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.signOutButton}
+                onPress={handleSignOut}
+                accessibilityRole="button"
+                accessibilityLabel="Sign out"
+              >
+                <LogOut color={colors.error} size={18} />
+                <Text style={styles.signOutText}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.authForm}>
+              <TextInput
+                style={styles.authInput}
+                placeholder="Email"
+                placeholderTextColor={colors.textMuted}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                accessibilityLabel="Email address"
+              />
+              <TextInput
+                style={styles.authInput}
+                placeholder="Password"
+                placeholderTextColor={colors.textMuted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                accessibilityLabel="Password"
+              />
+              
+              {authError && (
+                <Text style={styles.authError}>{authError}</Text>
+              )}
+              
+              <TouchableOpacity
+                style={[styles.authButton, authSubmitting && styles.authButtonDisabled]}
+                onPress={handleAuth}
+                disabled={authSubmitting}
+                accessibilityRole="button"
+                accessibilityLabel={authMode === 'signin' ? 'Sign in' : 'Sign up'}
+              >
+                {authSubmitting ? (
+                  <ActivityIndicator color={colors.white} size="small" />
+                ) : (
+                  <Text style={styles.authButtonText}>
+                    {authMode === 'signin' ? 'Sign In' : 'Sign Up'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.authToggle}
+                onPress={() => {
+                  setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+                  setAuthError(null);
+                }}
+                accessibilityRole="button"
+              >
+                <Text style={styles.authToggleText}>
+                  {authMode === 'signin' 
+                    ? "Don't have an account? Sign Up" 
+                    : 'Already have an account? Sign In'}
+                </Text>
+              </TouchableOpacity>
+              
+              <Text style={styles.hint}>
+                Sign in to sync your settings across devices
+              </Text>
+            </View>
+          )}
+        </View>
+
         <View style={[
           styles.section,
-          { marginTop: spacing.lg },
           preferences.isPremium && { backgroundColor: glass.cardTint.premiumActive }
         ]}>
           <View style={styles.premiumBanner}>
@@ -639,5 +766,76 @@ const styles = StyleSheet.create({
   configHintText: {
     color: colors.textMuted,
     fontSize: 11,
+  },
+  // Auth styles
+  accountInfo: {
+    gap: spacing.md,
+  },
+  accountHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  accountDetails: {
+    flex: 1,
+  },
+  accountEmail: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  accountHint: {
+    color: colors.textMuted,
+    fontSize: 12,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  signOutText: {
+    color: colors.error,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  authForm: {
+    gap: spacing.sm,
+  },
+  authInput: {
+    backgroundColor: colors.surfaceElevated,
+    color: colors.text,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    fontSize: 15,
+  },
+  authButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+  authButtonDisabled: {
+    opacity: 0.7,
+  },
+  authButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  authToggle: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  authToggleText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+  },
+  authError: {
+    color: colors.error,
+    fontSize: 13,
+    textAlign: 'center',
   },
 });
