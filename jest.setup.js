@@ -54,6 +54,19 @@ jest.mock('expo-location', () => ({
   },
 }));
 
+// Mock @shopify/react-native-skia
+jest.mock('@shopify/react-native-skia', () => ({
+  Canvas: ({ children }) => children,
+  Fill: ({ children }) => children,
+  Shader: () => null,
+  Skia: {
+    RuntimeEffect: {
+      Make: jest.fn().mockReturnValue({}),
+    },
+  },
+  vec: jest.fn((x, y) => ({ x, y })),
+}));
+
 // Mock expo-haptics
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(),
