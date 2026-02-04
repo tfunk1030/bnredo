@@ -26,7 +26,17 @@ export function useCompassHeading() {
         setHasPermission(true);
 
         subscription = await Location.watchHeadingAsync((headingData) => {
-          setHeading(headingData.trueHeading);
+          // trueHeading can be -1 on iOS when compass is uncalibrated or unavailable
+          // Fall back to magHeading, or keep previous value if both are invalid
+          const heading = headingData.trueHeading >= 0 
+            ? headingData.trueHeading 
+            : headingData.magHeading >= 0 
+              ? headingData.magHeading 
+              : null;
+          
+          if (heading !== null) {
+            setHeading(heading);
+          }
         });
       } catch (error) {
         console.error('Error setting up compass:', error);
