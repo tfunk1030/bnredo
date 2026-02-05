@@ -101,9 +101,9 @@ vec4 main(vec2 fragCoord) {
   float fadeY = smoothstep(0.0, 0.1, uv.y) * smoothstep(1.0, 0.9, uv.y);
   float fade = fadeX * fadeY;
   
-  // Final color - subtle white/gray lines
-  // Base opacity is very low (0.03-0.05) for subtlety
-  float alpha = lines * fade * 0.04 * intensity;
+  // Final color - visible wind lines
+  // Increased opacity (0.15) so effect is actually noticeable
+  float alpha = lines * fade * 0.15 * intensity;
   
   // Slight color tint - cool gray/blue for wind feel
   vec3 lineColor = vec3(0.8, 0.85, 0.9);
