@@ -101,12 +101,12 @@ vec4 main(vec2 fragCoord) {
   float fadeY = smoothstep(0.0, 0.1, uv.y) * smoothstep(1.0, 0.9, uv.y);
   float fade = fadeX * fadeY;
   
-  // Final color - visible wind lines
-  // High opacity (0.25) for testing visibility
-  float alpha = lines * fade * 0.25 * intensity;
+  // Final color - subtle wind lines
+  // Lower opacity to prevent washing out
+  float alpha = lines * fade * 0.08 * intensity;
   
-  // Slight color tint - cool gray/blue for wind feel
-  vec3 lineColor = vec3(0.8, 0.85, 0.9);
+  // Subtle lighter lines against dark background
+  vec3 lineColor = vec3(0.3, 0.35, 0.4);
   
   return vec4(lineColor, alpha);
 }
@@ -186,5 +186,6 @@ const styles = StyleSheet.create({
   canvas: {
     ...StyleSheet.absoluteFillObject,
     zIndex: -1,
+    backgroundColor: 'transparent',
   },
 });

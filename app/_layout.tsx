@@ -11,15 +11,16 @@ import { colors } from '@/src/constants/theme';
 
 // Inner component that can access weather context
 function AppContent() {
-  const { weather } = useWeather();
+  // const { weather } = useWeather();
   
   return (
     <View style={styles.container}>
-      {/* Animated wind background */}
+      {/* TODO: Wind background disabled - needs different rendering approach
       <WindBackground 
         windDirection={weather?.windDirection ?? 45}
         intensity={1}
       />
+      */}
       
       {/* Main app content */}
       <Stack screenOptions={{ headerShown: false }}>
