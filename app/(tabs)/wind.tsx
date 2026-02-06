@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
-  Animated,
   AccessibilityInfo,
   TextInput,
   Modal,
@@ -16,6 +15,7 @@ import Slider from '@react-native-community/slider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Lock, Wind, Navigation, Target, Minus, Plus, AlertCircle, Edit3, Check, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing } from 'react-native-reanimated';
 import { colors, spacing, borderRadius, typography, touchTargets, glass } from '@/src/constants/theme';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
@@ -25,6 +25,7 @@ import { CompassDisplay } from '@/src/components/CompassDisplay';
 import { useCompassHeading } from '@/src/hooks/useCompassHeading';
 import { useHapticSlider } from '@/src/hooks/useHapticSlider';
 import { formatWindSpeed, formatDistance } from '@/src/utils/unit-conversions';
+import { GradientCard } from '@/src/components/ui/GradientCard';
 
 export default function WindScreen() {
   const insets = useSafeAreaInsets();
@@ -69,30 +70,48 @@ export default function WindScreen() {
     return () => subscription.remove();
   }, []);
 
-  // Animation values for visual feedback
-  const lockButtonScale = React.useRef(new Animated.Value(1)).current;
-  const fineAdjustScaleMinus = React.useRef(new Animated.Value(1)).current;
-  const fineAdjustScalePlus = React.useRef(new Animated.Value(1)).current;
+  // Animation values for visual feedback (reanimated)
+  const lockButtonScale = useSharedValue(1);
+  const fineAdjustScaleMinus = useSharedValue(1);
+  const fineAdjustScalePlus = useSharedValue(1);
 
-  const animateButtonPress = (scaleValue: Animated.Value) => {
-    // Skip animation if reduce motion is enabled
-    if (reduceMotionEnabled) {
-      return;
+  // Lock button shadow pulse (reanimated)
+  const shadowPulseOpacity = useSharedValue(0.3);
+
+  React.useEffect(() => {
+    if (weather && !reduceMotionEnabled) {
+      shadowPulseOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.5, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.3, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+        ),
+        -1,
+      );
+    } else {
+      shadowPulseOpacity.value = 0.3;
     }
+  }, [weather, reduceMotionEnabled, shadowPulseOpacity]);
 
-    Animated.sequence([
-      Animated.timing(scaleValue, {
-        toValue: 0.92,
-        duration: 80,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleValue, {
-        toValue: 1,
-        duration: 120,
-        useNativeDriver: true,
-      }),
-    ]).start();
+  const animateButtonPress = (scaleValue: { value: number }) => {
+    if (reduceMotionEnabled) return;
+    scaleValue.value = withSequence(
+      withTiming(0.92, { duration: 80 }),
+      withTiming(1, { duration: 120 }),
+    );
   };
+
+  const lockButtonAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: lockButtonScale.value }],
+    shadowOpacity: shadowPulseOpacity.value,
+  }));
+
+  const fineAdjustMinusStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fineAdjustScaleMinus.value }],
+  }));
+
+  const fineAdjustPlusStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fineAdjustScalePlus.value }],
+  }));
 
   const handleLock = () => {
     if (!preferences.isPremium) return;
@@ -128,7 +147,7 @@ export default function WindScreen() {
     resetSliderHaptic();
   };
 
-  const adjustYardage = (amount: number, scaleValue: Animated.Value) => {
+  const adjustYardage = (amount: number, scaleValue: { value: number }) => {
     animateButtonPress(scaleValue);
     setTargetYardage(prev => {
       const newValue = Math.max(50, Math.min(350, prev + amount));
@@ -285,7 +304,7 @@ export default function WindScreen() {
           </View>
         )}
 
-        <View style={styles.distanceSection}>
+        <GradientCard variant="default" style={styles.distanceSection}>
           <Text style={styles.distanceLabel}>Target Distance</Text>
           <Text style={styles.distanceValue}>{distanceFormat.value} {distanceFormat.shortLabel}</Text>
 
@@ -297,7 +316,7 @@ export default function WindScreen() {
               accessibilityHint="Double tap to subtract 1 yard"
               activeOpacity={0.7}
             >
-              <Animated.View style={[styles.fineAdjustButton, { transform: [{ scale: fineAdjustScaleMinus }] }]}>
+              <Animated.View style={[styles.fineAdjustButton, fineAdjustMinusStyle]}>
                 <Minus color={colors.text} size={18} />
               </Animated.View>
             </TouchableOpacity>
@@ -330,7 +349,7 @@ export default function WindScreen() {
               accessibilityHint="Double tap to add 1 yard"
               activeOpacity={0.7}
             >
-              <Animated.View style={[styles.fineAdjustButton, { transform: [{ scale: fineAdjustScalePlus }] }]}>
+              <Animated.View style={[styles.fineAdjustButton, fineAdjustPlusStyle]}>
                 <Plus color={colors.text} size={18} />
               </Animated.View>
             </TouchableOpacity>
@@ -340,7 +359,7 @@ export default function WindScreen() {
             <Text style={styles.sliderLabel}>50</Text>
             <Text style={styles.sliderLabel}>350</Text>
           </View>
-        </View>
+        </GradientCard>
       </ScrollView>
 
       <TouchableOpacity
@@ -358,7 +377,7 @@ export default function WindScreen() {
             { bottom: 40 + insets.bottom },
             preferences.handPreference === 'left' && styles.lockButtonLeft,
             !weather && styles.lockButtonDisabled,
-            { transform: [{ scale: lockButtonScale }] },
+            lockButtonAnimStyle,
           ]}
         >
           <Target color={weather ? colors.white : colors.textMuted} size={28} />
@@ -546,7 +565,7 @@ const styles = StyleSheet.create({
   },
   compassSection: {
     alignItems: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
   },
   permissionWarning: {
     flexDirection: 'row',
@@ -586,10 +605,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.cardGradientStart,
     marginTop: spacing.md,
     padding: spacing.md,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -611,15 +630,10 @@ const styles = StyleSheet.create({
   windInfoText: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   distanceSection: {
     marginTop: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   distanceLabel: {
     color: colors.textSecondary,

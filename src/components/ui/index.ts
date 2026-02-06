@@ -13,3 +13,7 @@ export { Skeleton } from './Skeleton';
 export { WeatherCardSkeleton } from './WeatherCardSkeleton';
 
 export { AnimatedCollapsible } from './AnimatedCollapsible';
+
+export { AnimatedNumber } from './AnimatedNumber';
+
+export { GradientCard } from './GradientCard';

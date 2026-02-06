@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Wind, AlertTriangle, ArrowLeft, ArrowRight, RotateCcw } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography, hitSlop, glass } from '@/src/constants/theme';
+import { colors, spacing, borderRadius, typography, hitSlop } from '@/src/constants/theme';
+import { GradientCard } from '@/src/components/ui/GradientCard';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useClubBag } from '@/src/contexts/ClubBagContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
@@ -175,10 +176,10 @@ export function WindResultsModal({
 
           <View
             ref={firstResultRef}
-            style={styles.scenarioCard}
             accessible
             accessibilityLabel={`Sustained wind at ${windSpeedFormat?.value} ${windSpeedFormat?.label}. Plays like ${formatDistance(calculations.sustained.adjustedYardage, preferences.distanceUnit).value} ${formatDistance(calculations.sustained.adjustedYardage, preferences.distanceUnit).label}. ${getAimDirection(calculations.sustained.lateralOffset)}. ${calculations.sustained.recommendedClub ? `Recommended club: ${calculations.sustained.recommendedClub}` : ''}`}
           >
+          <GradientCard variant="result" style={styles.scenarioCard}>
             <View style={styles.scenarioHeader}>
               <Wind color={colors.primary} size={20} />
               <Text style={styles.scenarioTitle}>Sustained Wind</Text>
@@ -212,13 +213,14 @@ export function WindResultsModal({
                 </Text>
               </View>
             )}
+          </GradientCard>
           </View>
 
           <View
-            style={[styles.scenarioCard, styles.gustCard]}
             accessible
             accessibilityLabel={`With gusts at ${gustSpeedFormat?.value} ${gustSpeedFormat?.label}. Plays like ${formatDistance(calculations.gust.adjustedYardage, preferences.distanceUnit).value} ${formatDistance(calculations.gust.adjustedYardage, preferences.distanceUnit).label}. ${getAimDirection(calculations.gust.lateralOffset)}. ${calculations.gust.recommendedClub ? `Recommended club: ${calculations.gust.recommendedClub}` : ''}`}
           >
+          <GradientCard variant="premium" style={styles.scenarioCard}>
             <View style={styles.scenarioHeader}>
               <AlertTriangle color={colors.warning} size={20} />
               <Text style={styles.scenarioTitle}>With Gusts</Text>
@@ -254,9 +256,10 @@ export function WindResultsModal({
                 </Text>
               </View>
             )}
+          </GradientCard>
           </View>
 
-          <View style={styles.breakdownSection}>
+          <GradientCard variant="default" style={styles.breakdownSection}>
             <Text style={styles.breakdownTitle}>Effect Breakdown</Text>
             <View style={styles.breakdownRow}>
               <Text style={styles.breakdownLabel}>Environmental</Text>
@@ -285,7 +288,7 @@ export function WindResultsModal({
                   : calculations.gust.windEffect.toFixed(1)} {preferences.distanceUnit === 'meters' ? 'm' : 'yds'}
               </Text>
             </View>
-          </View>
+          </GradientCard>
         </ScrollView>
 
         <TouchableOpacity
@@ -344,19 +347,10 @@ const styles = StyleSheet.create({
   targetValue: {
     color: colors.text,
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   scenarioCard: {
-    backgroundColor: glass.cardTint.success,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
     marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  gustCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.warning,
   },
   scenarioHeader: {
     flexDirection: 'row',
@@ -367,13 +361,13 @@ const styles = StyleSheet.create({
   scenarioTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     flex: 1,
   },
   windSpeed: {
     color: colors.primary,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   mainResult: {
     alignItems: 'center',
@@ -424,12 +418,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   breakdownSection: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
     marginTop: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   breakdownTitle: {
     color: colors.text,
@@ -449,7 +438,7 @@ const styles = StyleSheet.create({
   breakdownValue: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   doneButton: {
     backgroundColor: colors.primary,

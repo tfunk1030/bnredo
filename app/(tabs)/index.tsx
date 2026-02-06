@@ -10,7 +10,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import { Minus, Plus, ChevronDown, ChevronUp } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography, touchTargets, glass } from '@/src/constants/theme';
+import { colors, spacing, borderRadius, typography, touchTargets } from '@/src/constants/theme';
+import { AnimatedNumber } from '@/src/components/ui/AnimatedNumber';
+import { GradientCard } from '@/src/components/ui/GradientCard';
 import { WeatherCard } from '@/src/components/WeatherCard';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useClubBag } from '@/src/contexts/ClubBagContext';
@@ -90,7 +92,7 @@ export default function ShotScreen() {
       >
         <WeatherCard />
 
-        <View style={styles.yardageSection}>
+        <GradientCard variant="default" style={styles.yardageSection}>
           <Text style={styles.sectionLabel}>Target Distance</Text>
 
           <View style={styles.yardageDisplay}>
@@ -170,15 +172,16 @@ export default function ShotScreen() {
               <Text style={styles.adjustButtonText}>5</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </GradientCard>
 
         {calculations && (
-          <View style={styles.resultSection}>
+          <GradientCard variant="result" style={styles.resultSection}>
             <Text style={styles.playsLikeLabel}>Plays Like</Text>
-            <Text style={styles.playsLikeValue}>
-              {adjustedFormat?.value}
-              <Text style={styles.playsLikeUnit}> {adjustedFormat?.label}</Text>
-            </Text>
+            <AnimatedNumber
+              value={adjustedFormat?.value ?? ''}
+              style={styles.playsLikeValue}
+              suffix={<Text style={styles.playsLikeUnit}> {adjustedFormat?.label}</Text>}
+            />
 
             {recommendedClub && (
               <View style={styles.clubRecommendation}>
@@ -222,7 +225,7 @@ export default function ShotScreen() {
                 </View>
               </View>
             )}
-          </View>
+          </GradientCard>
         )}
       </ScrollView>
     </View>
@@ -249,18 +252,13 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   yardageSection: {
-    backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
     marginTop: spacing.lg,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   sectionLabel: {
     color: colors.textSecondary,
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '400',
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
@@ -315,26 +313,24 @@ const styles = StyleSheet.create({
   adjustButtonText: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   resultSection: {
-    backgroundColor: glass.cardTint.success,
     marginHorizontal: spacing.md,
     marginTop: spacing.lg,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.primary,
+    padding: spacing.xl,
   },
   playsLikeLabel: {
     color: colors.textSecondary,
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '400',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
   playsLikeValue: {
-    fontSize: 56,
+    fontSize: 64,
     fontWeight: '700',
     color: colors.primary,
     textAlign: 'center',
@@ -398,9 +394,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   breakdownValue: {
-    color: colors.text,
+    color: colors.textSecondary,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   breakdownTotal: {
     marginTop: spacing.sm,
@@ -411,7 +407,7 @@ const styles = StyleSheet.create({
   breakdownTotalLabel: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   breakdownTotalValue: {
     color: colors.primary,

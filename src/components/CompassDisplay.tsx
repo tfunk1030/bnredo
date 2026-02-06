@@ -123,8 +123,8 @@ export const CompassDisplay = React.memo(function CompassDisplay({ heading, wind
           x2={end.x}
           y2={end.y}
           stroke={isMajor ? colors.textSecondary : colors.textMuted}
-          strokeWidth={isMajor ? 2.5 : 1}
-          opacity={isMajor ? 0.9 : 0.5}
+          strokeWidth={isMajor ? 2.5 : isMinor ? 1 : 0.75}
+          opacity={isMajor ? 0.9 : isMinor ? 0.4 : 0.3}
         />
       );
     }
@@ -143,7 +143,7 @@ export const CompassDisplay = React.memo(function CompassDisplay({ heading, wind
         fill={colors.surfaceElevated}
         stroke={colors.border}
         strokeWidth={1}
-        opacity={0.6}
+        opacity={0.4}
       />
     );
   };
@@ -204,8 +204,8 @@ export const CompassDisplay = React.memo(function CompassDisplay({ heading, wind
                 x={pos.x}
                 y={pos.y}
                 fontSize={isNorth ? 18 : isCardinal ? 14 : 14}
-                fontWeight={isNorth ? '800' : isCardinal ? '700' : '500'}
-                fill={isNorth ? colors.error : isCardinal ? colors.text : colors.textSecondary}
+                fontWeight={isNorth ? '800' : isCardinal ? '700' : '400'}
+                fill={isNorth ? colors.error : isCardinal ? colors.text : colors.textMuted}
                 textAnchor="middle"
                 alignmentBaseline="middle"
               >

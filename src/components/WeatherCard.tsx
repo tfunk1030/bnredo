@@ -89,17 +89,17 @@ export const WeatherCard = React.memo(function WeatherCard() {
 
       <View style={styles.grid} accessibilityRole="summary">
         <View style={styles.gridItem} accessible accessibilityLabel={`Temperature: ${tempFormat?.value} ${tempFormat?.label}`}>
-          <Thermometer color={colors.accent} size={18} />
+          <Thermometer color={colors.accent} size={16} />
           <Text style={styles.gridValue}>{tempFormat?.value}{tempFormat?.shortLabel}</Text>
           <Text style={styles.gridLabel}>Temp</Text>
         </View>
         <View style={styles.gridItem} accessible accessibilityLabel={`Humidity: ${weather.humidity} percent`}>
-          <Droplets color={colors.primary} size={18} />
+          <Droplets color={colors.primaryMuted} size={16} />
           <Text style={styles.gridValue}>{weather.humidity}%</Text>
           <Text style={styles.gridLabel}>Humidity</Text>
         </View>
         <View style={styles.gridItem} accessible accessibilityLabel={`Wind: ${windFormat?.value} ${windFormat?.label} from ${getWindDirectionLabel(weather.windDirection)}`}>
-          <Wind color={colors.textSecondary} size={18} />
+          <Wind color={colors.textSecondary} size={16} />
           <Text style={styles.gridValue}>
             {windFormat?.value}
             <Text style={styles.gridUnit}> {windFormat?.shortLabel}</Text>
@@ -107,7 +107,7 @@ export const WeatherCard = React.memo(function WeatherCard() {
           <Text style={styles.gridLabel}>{getWindDirectionLabel(weather.windDirection)}</Text>
         </View>
         <View style={styles.gridItem} accessible accessibilityLabel={`Altitude: ${altFormat?.value} ${altFormat?.label}`}>
-          <Gauge color={colors.textSecondary} size={18} />
+          <Gauge color={colors.textSecondary} size={16} />
           <Text style={styles.gridValue}>{altFormat?.value}</Text>
           <Text style={styles.gridLabel}>Alt ({altFormat?.shortLabel})</Text>
         </View>
@@ -124,7 +124,8 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     marginHorizontal: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -144,7 +145,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   locationRow: {
     flexDirection: 'row',
@@ -202,16 +203,16 @@ const styles = StyleSheet.create({
   },
   gridValue: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   gridUnit: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '400',
   },
   gridLabel: {
     color: colors.textMuted,
-    fontSize: 11,
+    fontSize: 10,
   },
   errorText: {
     color: colors.error,
