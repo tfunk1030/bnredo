@@ -1,11 +1,12 @@
 import * as React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { MapPin, RefreshCw, Thermometer, Droplets, Wind, Gauge } from 'lucide-react-native';
 import { colors, spacing, borderRadius, hitSlop } from '@/src/constants/theme';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
 import { getWindDirectionLabel } from '@/src/services/weather-service';
 import { formatTemperature, formatWindSpeed, formatAltitude } from '@/src/utils/unit-conversions';
+import { GlassCard } from '@/src/components/ui/GlassCard';
 
 export const WeatherCard = React.memo(function WeatherCard() {
   const { weather, isLoading, error, isOffline, refreshWeather } = useWeather();
@@ -25,18 +26,33 @@ export const WeatherCard = React.memo(function WeatherCard() {
 
   if (isLoading) {
     return (
-      <View style={styles.container} accessibilityRole="alert" accessibilityLiveRegion="polite">
+      <GlassCard
+        intensity="medium"
+        tint="dark"
+        radius="lg"
+        padding="md"
+        style={[styles.container, styles.cardShadow]}
+        accessibilityRole="alert"
+        accessibilityLiveRegion="polite"
+      >
         <View style={styles.loadingContainer}>
           <ActivityIndicator color={colors.primary} size="small" accessibilityLabel="Loading" />
           <Text style={styles.loadingText}>Loading weather...</Text>
         </View>
-      </View>
+      </GlassCard>
     );
   }
 
   if (!weather) {
     return (
-      <View style={styles.container} accessibilityRole="alert">
+      <GlassCard
+        intensity="medium"
+        tint="dark"
+        radius="lg"
+        padding="md"
+        style={[styles.container, styles.cardShadow]}
+        accessibilityRole="alert"
+      >
         <Text style={styles.errorText}>Unable to load weather</Text>
         <TouchableOpacity
           style={styles.refreshButton}
@@ -48,12 +64,18 @@ export const WeatherCard = React.memo(function WeatherCard() {
           <RefreshCw color={colors.primary} size={16} />
           <Text style={styles.refreshText}>Retry</Text>
         </TouchableOpacity>
-      </View>
+      </GlassCard>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <GlassCard
+      intensity="medium"
+      tint="dark"
+      radius="lg"
+      padding="md"
+      style={[styles.container, styles.cardShadow]}
+    >
       <View style={styles.header}>
         <View style={styles.locationRow}>
           <MapPin color={colors.textSecondary} size={14} />
@@ -116,19 +138,26 @@ export const WeatherCard = React.memo(function WeatherCard() {
       {error && !isOffline && (
         <Text style={styles.errorBanner}>{error}</Text>
       )}
-    </View>
+    </GlassCard>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
     marginHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+  },
+  cardShadow: {
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 14,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   loadingContainer: {
     flexDirection: 'row',
