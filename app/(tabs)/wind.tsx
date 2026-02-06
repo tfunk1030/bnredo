@@ -342,7 +342,7 @@ export default function WindScreen() {
               activeOpacity={0.7}
             >
               <Animated.View style={[styles.fineAdjustButton, fineAdjustMinusStyle]}>
-                <Minus color={colors.text} size={18} />
+                <Minus color={colors.white} size={18} />
               </Animated.View>
             </TouchableOpacity>
 
@@ -355,7 +355,7 @@ export default function WindScreen() {
               onValueChange={handleSliderChange}
               onSlidingComplete={handleSliderComplete}
               minimumTrackTintColor={colors.primary}
-              maximumTrackTintColor={colors.surfaceElevated}
+              maximumTrackTintColor={colors.cardGradientStart}
               thumbTintColor={colors.primary}
               accessibilityLabel={`Target distance: ${targetYardage} yards`}
               accessibilityRole="adjustable"
@@ -375,7 +375,7 @@ export default function WindScreen() {
               activeOpacity={0.7}
             >
               <Animated.View style={[styles.fineAdjustButton, fineAdjustPlusStyle]}>
-                <Plus color={colors.text} size={18} />
+                <Plus color={colors.white} size={18} />
               </Animated.View>
             </TouchableOpacity>
           </View>
@@ -699,12 +699,21 @@ const styles = StyleSheet.create({
   fineAdjustButton: {
     width: touchTargets.minimum,
     height: touchTargets.minimum,
-    borderRadius: touchTargets.minimum / 2,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   sliderLabels: {
     flexDirection: 'row',
@@ -723,18 +732,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.full,
     ...Platform.select({
       ios: {
         shadowColor: colors.black,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.22,
+        shadowRadius: 7,
       },
       android: {
-        elevation: 8,
+        elevation: 4,
       },
     }),
   },
