@@ -12,6 +12,7 @@ import {
   ViewStyle,
   StyleProp,
   Platform,
+  ViewProps,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { colors, borderRadius, glass, spacing } from '@/src/constants/theme';
@@ -31,6 +32,12 @@ export interface GlassCardProps {
   padding?: keyof typeof spacing | number;
   /** Accessibility label */
   accessibilityLabel?: string;
+  /** Accessibility role */
+  accessibilityRole?: ViewProps['accessibilityRole'];
+  /** Accessibility live region */
+  accessibilityLiveRegion?: ViewProps['accessibilityLiveRegion'];
+  /** Accessibility state */
+  accessibilityState?: ViewProps['accessibilityState'];
   /** Whether to show border */
   bordered?: boolean;
   /** Test ID for testing */
@@ -45,6 +52,9 @@ export function GlassCard({
   style,
   padding = 'md',
   accessibilityLabel,
+  accessibilityRole,
+  accessibilityLiveRegion,
+  accessibilityState,
   bordered = true,
   testID,
 }: GlassCardProps) {
@@ -73,11 +83,14 @@ export function GlassCard({
 
   if (useBlur) {
     return (
-      <View
-        style={[containerStyle, style]}
-        accessibilityLabel={accessibilityLabel}
-        testID={testID}
-      >
+    <View
+      style={[containerStyle, style]}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole={accessibilityRole}
+      accessibilityLiveRegion={accessibilityLiveRegion}
+      accessibilityState={accessibilityState}
+      testID={testID}
+    >
         <BlurView
           intensity={blurIntensity}
           tint="dark"
@@ -99,6 +112,9 @@ export function GlassCard({
         style,
       ]}
       accessibilityLabel={accessibilityLabel}
+      accessibilityRole={accessibilityRole}
+      accessibilityLiveRegion={accessibilityLiveRegion}
+      accessibilityState={accessibilityState}
       testID={testID}
     >
       {children}
