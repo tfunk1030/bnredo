@@ -129,7 +129,10 @@ export function ClubBagProvider({ children }: { children: React.ReactNode }) {
     const enabled = getEnabledClubs();
     if (enabled.length === 0) return null;
 
-    let bestClub = enabled[enabled.length - 1];
+    // enabled is sorted descending (longest first)
+    // Start with longest club as default - if target is longer than all clubs,
+    // recommend the longest one (not the shortest!)
+    let bestClub = enabled[0];
     for (const club of enabled) {
       if (club.customDistance >= yardage) {
         bestClub = club;
