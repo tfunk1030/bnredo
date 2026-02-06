@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -113,7 +114,7 @@ export default function ShotScreen() {
               }}
               onSlidingComplete={resetSliderHaptic}
               minimumTrackTintColor={colors.primary}
-              maximumTrackTintColor={colors.border}
+              maximumTrackTintColor={colors.cardGradientStart}
               thumbTintColor={colors.primary}
               accessibilityLabel={`Target distance: ${targetFormat.value} ${targetFormat.label}`}
               accessibilityRole="adjustable"
@@ -138,7 +139,7 @@ export default function ShotScreen() {
               accessibilityLabel="Decrease distance by 5 yards"
               accessibilityHint="Double tap to subtract 5 yards from target distance"
             >
-              <Minus color={colors.text} size={20} />
+              <Minus color={colors.white} size={20} />
               <Text style={styles.adjustButtonText}>5</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -148,7 +149,7 @@ export default function ShotScreen() {
               accessibilityLabel="Decrease distance by 1 yard"
               accessibilityHint="Double tap to subtract 1 yard from target distance"
             >
-              <Minus color={colors.text} size={20} />
+              <Minus color={colors.white} size={20} />
               <Text style={styles.adjustButtonText}>1</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -158,7 +159,7 @@ export default function ShotScreen() {
               accessibilityLabel="Increase distance by 1 yard"
               accessibilityHint="Double tap to add 1 yard to target distance"
             >
-              <Plus color={colors.text} size={20} />
+              <Plus color={colors.white} size={20} />
               <Text style={styles.adjustButtonText}>1</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -168,7 +169,7 @@ export default function ShotScreen() {
               accessibilityLabel="Increase distance by 5 yards"
               accessibilityHint="Double tap to add 5 yards to target distance"
             >
-              <Plus color={colors.text} size={20} />
+              <Plus color={colors.white} size={20} />
               <Text style={styles.adjustButtonText}>5</Text>
             </TouchableOpacity>
           </View>
@@ -302,16 +303,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surfaceElevated,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
     gap: 4,
-    minWidth: 64,
-    minHeight: touchTargets.minimum,
+    minWidth: 72,
+    minHeight: touchTargets.comfortable,
     justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.18,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   adjustButtonText: {
-    color: colors.text,
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
