@@ -43,14 +43,17 @@ export default function SettingsScreen() {
   const [password, setPassword] = React.useState('');
   const [authMode, setAuthMode] = React.useState<'signin' | 'signup'>('signin');
   const [authError, setAuthError] = React.useState<string | null>(null);
+  const [authSuccess, setAuthSuccess] = React.useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = React.useState(false);
 
   const handleAuth = async () => {
     if (!email || !password) {
       setAuthError('Please enter email and password');
+      setAuthSuccess(null);
       return;
     }
     setAuthError(null);
+    setAuthSuccess(null);
     setAuthSubmitting(true);
     
     const result = authMode === 'signin' 
@@ -65,7 +68,7 @@ export default function SettingsScreen() {
       setEmail('');
       setPassword('');
       if (authMode === 'signup') {
-        setAuthError('Check your email to confirm your account');
+        setAuthSuccess('Check your email to confirm your account');
       }
     }
   };
@@ -202,6 +205,10 @@ export default function SettingsScreen() {
                 <Text style={styles.authError}>{authError}</Text>
               )}
               
+              {authSuccess && (
+                <Text style={styles.authSuccess}>{authSuccess}</Text>
+              )}
+              
               <TouchableOpacity
                 style={[styles.authButton, authSubmitting && styles.authButtonDisabled]}
                 onPress={handleAuth}
@@ -223,6 +230,7 @@ export default function SettingsScreen() {
                 onPress={() => {
                   setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
                   setAuthError(null);
+                  setAuthSuccess(null);
                 }}
                 accessibilityRole="button"
               >
@@ -835,6 +843,11 @@ const styles = StyleSheet.create({
   },
   authError: {
     color: colors.error,
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  authSuccess: {
+    color: colors.primary,
     fontSize: 13,
     textAlign: 'center',
   },

@@ -164,9 +164,15 @@ export default function WindScreen() {
     const windDirection = parseFloat(manualWindDirection);
 
     if (!isNaN(windSpeed) && !isNaN(windGust) && !isNaN(windDirection)) {
+      const clampedWindSpeed = Math.max(0, Math.min(100, windSpeed));
+      const clampedWindGust = Math.max(0, Math.min(150, windGust));
+      
+      // Ensure gust is at least as strong as sustained wind
+      const validatedGust = Math.max(clampedWindGust, clampedWindSpeed);
+      
       await updateManualWeather({
-        windSpeed: Math.max(0, Math.min(100, windSpeed)),
-        windGust: Math.max(0, Math.min(150, windGust)),
+        windSpeed: clampedWindSpeed,
+        windGust: validatedGust,
         windDirection: ((windDirection % 360) + 360) % 360,
       });
       setShowManualInput(false);
