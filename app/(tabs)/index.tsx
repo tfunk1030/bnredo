@@ -55,8 +55,8 @@ export default function ShotScreen() {
       '7-iron'
     );
 
-    // Calculate environmental effect in yards (positive = plays longer, negative = plays shorter)
-    const envEffectYards = envResult.carryDistance - targetYardage;
+    // Calculate environmental effect in yards (negative = plays shorter/ball goes farther, positive = plays longer/ball falls short)
+    const envEffectYards = -(envResult.carryDistance - targetYardage);
     
     // Convert to percentage for display
     const totalAdjustmentPercent = (envEffectYards / targetYardage) * 100;
