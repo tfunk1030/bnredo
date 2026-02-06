@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,7 +13,7 @@ import Slider from '@react-native-community/slider';
 import { Minus, Plus, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography, touchTargets } from '@/src/constants/theme';
 import { AnimatedNumber } from '@/src/components/ui/AnimatedNumber';
-import { GradientCard } from '@/src/components/ui/GradientCard';
+import { GlassCard } from '@/src/components/ui/GlassCard';
 import { WeatherCard } from '@/src/components/WeatherCard';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useClubBag } from '@/src/contexts/ClubBagContext';
@@ -92,7 +93,13 @@ export default function ShotScreen() {
       >
         <WeatherCard />
 
-        <GradientCard variant="default" style={styles.yardageSection}>
+        <GlassCard
+          intensity="medium"
+          tint="dark"
+          radius="lg"
+          padding="lg"
+          style={[styles.yardageSection, styles.cardShadow]}
+        >
           <Text style={styles.sectionLabel}>Target Distance</Text>
 
           <View style={styles.yardageDisplay}>
@@ -172,10 +179,16 @@ export default function ShotScreen() {
               <Text style={styles.adjustButtonText}>5</Text>
             </TouchableOpacity>
           </View>
-        </GradientCard>
+        </GlassCard>
 
         {calculations && (
-          <GradientCard variant="result" style={styles.resultSection}>
+          <GlassCard
+            intensity="medium"
+            tint="dark"
+            radius="lg"
+            padding="xl"
+            style={[styles.resultSection, styles.cardShadow]}
+          >
             <Text style={styles.playsLikeLabel}>Plays Like</Text>
             <AnimatedNumber
               value={adjustedFormat?.value ?? ''}
@@ -225,7 +238,7 @@ export default function ShotScreen() {
                 </View>
               </View>
             )}
-          </GradientCard>
+          </GlassCard>
         )}
       </ScrollView>
     </View>
@@ -254,6 +267,19 @@ const styles = StyleSheet.create({
   yardageSection: {
     marginHorizontal: spacing.md,
     marginTop: spacing.lg,
+  },
+  cardShadow: {
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 14,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   sectionLabel: {
     color: colors.textSecondary,
@@ -318,7 +344,6 @@ const styles = StyleSheet.create({
   resultSection: {
     marginHorizontal: spacing.md,
     marginTop: spacing.lg,
-    padding: spacing.xl,
   },
   playsLikeLabel: {
     color: colors.textSecondary,
