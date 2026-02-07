@@ -7,9 +7,9 @@ Based on reference app design (Feb 7, 2026)
 ### Background
 ```typescript
 background: {
-  primary: '#000000',      // Pure black base
-  secondary: '#1C1C1E',    // Dark charcoal cards
-  tertiary: '#2C2C2E',     // Elevated surfaces
+  primary: '#0A0A0A',      // Near-black base (subtle depth vs cards)
+  secondary: '#1C1E1F',    // Dark gray-green cards
+  tertiary: '#2A2D2E',     // Elevated surfaces
 }
 ```
 
@@ -19,14 +19,14 @@ text: {
   primary: '#FFFFFF',      // White - main text
   secondary: '#8E8E93',    // Gray - labels, metadata
   tertiary: '#636366',     // Darker gray - disabled
-  accent: '#7FFF00',       // Lime green - highlighted values
+  accent: '#4B9E50',       // Golf green - highlighted values
 }
 ```
 
 ### Accent Colors
 ```typescript
 accent: {
-  primary: '#7FFF00',      // Lime green - primary actions
+  primary: '#4B9E50',      // Natural golf green (muted, not neon)
   success: '#34C759',      // Green - confirmation
   warning: '#FF9500',      // Orange - alerts
   error: '#FF3B30',        // Red - errors
@@ -36,8 +36,8 @@ accent: {
 ### UI Elements
 ```typescript
 ui: {
-  border: '#38383A',       // Subtle borders
-  divider: '#48484A',      // Section dividers
+  border: '#333636',       // Subtle borders (slight green tint)
+  divider: '#3A3D3E',      // Section dividers
   overlay: 'rgba(0,0,0,0.6)', // Modals/overlays
 }
 ```

@@ -1,25 +1,25 @@
 export const colors = {
-  // Backgrounds - Pure black aesthetic
-  background: '#000000',        // Pure black base
-  surface: '#1C1C1E',          // Dark charcoal cards
-  surfaceElevated: '#2C2C2E',  // Elevated surfaces
-  border: '#38383A',           // Subtle borders
-  divider: '#48484A',          // Section dividers
+  // Backgrounds - Near-black aesthetic
+  background: '#0A0A0A',       // Near-black base (not pure black - allows card depth)
+  surface: '#1C1E1F',          // Dark gray-green cards
+  surfaceElevated: '#2A2D2E',  // Elevated surfaces
+  border: '#333636',           // Subtle borders (slight green tint)
+  divider: '#3A3D3E',          // Section dividers
 
-  // Primary - Lime green accent
-  primary: '#7FFF00',          // Bright lime green
-  primaryDark: '#6FE000',      // Darker lime
-  primaryLight: '#8FFF20',     // Lighter lime
+  // Primary - Muted golf green accent
+  primary: '#4B9E50',          // Natural golf green (not neon)
+  primaryDark: '#3D8B42',      // Darker golf green
+  primaryLight: '#5CB860',     // Lighter golf green
 
   // Legacy accent (kept for compatibility)
-  accent: '#7FFF00',           // Matches primary
-  accentDark: '#6FE000',
+  accent: '#4B9E50',           // Matches primary
+  accentDark: '#3D8B42',
 
   // Text
   text: '#FFFFFF',             // White - main text
   textSecondary: '#8E8E93',    // Gray - labels, metadata
   textMuted: '#636366',        // Darker gray - disabled
-  textAccent: '#7FFF00',       // Lime green - highlighted values
+  textAccent: '#4B9E50',       // Golf green - highlighted values
 
   // Feedback colors
   success: '#34C759',          // Green
@@ -43,10 +43,10 @@ export const spacing = {
 export const typography = {
   // Hero yardage display (148 yards)
   hero: {
-    fontSize: 72,
+    fontSize: 52,
     fontWeight: '700' as const,
-    lineHeight: 80,
-    letterSpacing: -2,
+    lineHeight: 60,
+    letterSpacing: -1.5,
   },
   // Large numbers (197 yards)
   largeNumber: {
@@ -200,19 +200,19 @@ export const glass = {
   },
   // Border opacity for glass edges
   borderOpacity: 0.15,
-  // Tint colors (applied over blur) - Updated for lime green
+  // Tint colors (applied over blur) - Muted golf green
   tint: {
     dark: 'rgba(0, 0, 0, 0.6)',
     light: 'rgba(255, 255, 255, 0.1)',
-    accent: 'rgba(127, 255, 0, 0.15)',    // lime green with transparency
-    primary: 'rgba(127, 255, 0, 0.12)',   // lime green primary
-    accentStrong: 'rgba(127, 255, 0, 0.2)', // stronger lime for active states
+    accent: 'rgba(75, 158, 80, 0.15)',     // golf green with transparency
+    primary: 'rgba(75, 158, 80, 0.12)',    // golf green primary
+    accentStrong: 'rgba(75, 158, 80, 0.2)', // stronger green for active states
   },
   // Card background tints (more subtle, for surface overlays)
   cardTint: {
-    success: 'rgba(52, 199, 89, 0.06)',   // subtle green for result cards
-    premium: 'rgba(127, 255, 0, 0.08)',   // subtle lime for premium sections
-    premiumActive: 'rgba(127, 255, 0, 0.12)', // stronger lime when premium is active
+    success: 'rgba(52, 199, 89, 0.06)',    // subtle green for result cards
+    premium: 'rgba(75, 158, 80, 0.08)',    // subtle green for premium sections
+    premiumActive: 'rgba(75, 158, 80, 0.12)', // stronger green when premium is active
   },
 };
 
@@ -250,7 +250,7 @@ export const components = {
     justifyContent: 'center' as const,
   },
   primaryButtonText: {
-    color: colors.black,
+    color: colors.white,
     fontSize: 17,
     fontWeight: '600' as const,
   },

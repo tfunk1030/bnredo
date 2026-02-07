@@ -87,7 +87,7 @@ export default function ShotScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <LinearGradient
-        colors={['rgba(127, 255, 0, 0.08)', 'transparent']}
+        colors={['rgba(75, 158, 80, 0.08)', 'transparent']}
         style={styles.gradientOverlay}
         pointerEvents="none"
       />
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.primary,
   },
   playsLikeLabel: {
