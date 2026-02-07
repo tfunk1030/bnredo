@@ -42,7 +42,7 @@ export class YardageModelEnhanced {
   private static readonly LATERAL_BASE_MULTIPLIER: number = 2.0; // Refined value
   private static readonly SPIN_GYRO_THRESHOLD: number = 6000; // RPM threshold
   private static readonly SPIN_TRANSITION_ZONE: number = 300; // RPM transition width
-  private static readonly AIR_DENSITY_SEA_LEVEL: number = 1.193; // kg/m³
+  private static readonly AIR_DENSITY_SEA_LEVEL: number = 1.177; // kg/m³ (77°F, 1013.25 hPa, 50% RH - TrackMan standard)
   private static readonly REFERENCE_VELOCITY: number = 50; // m/s for spin decay
   private static readonly ALTITUDE_PRESSURE_RATIO = 0.190284;
   private static readonly DENSITY_EXPONENT_SEA: number = 0.7; // Tuned for viscosity compensation
