@@ -1,30 +1,35 @@
 export const colors = {
-  // Backgrounds - Near-black aesthetic
-  background: '#0A0A0A',       // Near-black base (not pure black - allows card depth)
-  surface: '#1C1E1F',          // Dark gray-green cards
+  // Backgrounds - Near-black with subtle depth
+  background: '#0A0A0A',       // Near-black base
+  surface: '#1C1F24',          // Card top (gradient start)
+  surfaceBottom: '#15181D',    // Card bottom (gradient end)
   surfaceElevated: '#2A2D2E',  // Elevated surfaces
-  border: '#333636',           // Subtle borders (slight green tint)
-  divider: '#3A3D3E',          // Section dividers
+  border: '#2A2D30',           // Subtle borders
+  divider: '#333636',          // Section dividers
 
-  // Primary - Muted golf green accent
-  primary: '#4B9E50',          // Natural golf green (not neon)
-  primaryDark: '#3D8B42',      // Darker golf green
-  primaryLight: '#5CB860',     // Lighter golf green
+  // Primary green - ACTIONS ONLY (Lock Target, Plays Like, Recommended Club)
+  primary: '#4B9E50',          // Natural golf green - actionable items
+  primaryDark: '#3D8B42',      // Darker for pressed states
+  primaryLight: '#5CB860',     // Lighter for hover/focus
+
+  // Muted green - INFORMATIONAL (icons, indicators, wind arrows)
+  greenMuted: '#3D7A41',       // Desaturated green for non-critical indicators
+  greenSubtle: '#2D5E30',      // Very subtle green for backgrounds/tints
 
   // Legacy accent (kept for compatibility)
-  accent: '#4B9E50',           // Matches primary
+  accent: '#4B9E50',
   accentDark: '#3D8B42',
 
-  // Text
-  text: '#FFFFFF',             // White - main text
-  textSecondary: '#8E8E93',    // Gray - labels, metadata
-  textMuted: '#636366',        // Darker gray - disabled
+  // Text - improved contrast for outdoor legibility
+  text: '#FFFFFF',             // White - primary content
+  textSecondary: '#9A9AA0',    // Brighter gray - labels (improved contrast)
+  textMuted: '#6E6E76',        // Medium gray - metadata
   textAccent: '#4B9E50',       // Golf green - highlighted values
 
   // Feedback colors
-  success: '#34C759',          // Green
-  warning: '#FF9500',          // Orange
-  error: '#FF3B30',            // Red
+  success: '#34C759',
+  warning: '#FF9500',
+  error: '#FF3B30',
 
   white: '#ffffff',
   black: '#000000',
@@ -67,19 +72,17 @@ export const typography = {
     fontWeight: '600' as const,
     lineHeight: 22,
   },
-  // Section titles (Plays Like, Target Distance)
+  // Section titles (Plays Like, Target Distance) - no uppercase
   sectionTitle: {
     fontSize: 13,
-    fontWeight: '500' as const,
-    lineHeight: 18,
-    textTransform: 'uppercase' as const,
-  },
-  // Data labels (Temp, Humidity, WNW)
-  dataLabel: {
-    fontSize: 11,
     fontWeight: '400' as const,
-    lineHeight: 14,
-    textTransform: 'uppercase' as const,
+    lineHeight: 18,
+  },
+  // Data labels (Temp, Humidity, WNW) - no uppercase, increased line-height
+  dataLabel: {
+    fontSize: 12,
+    fontWeight: '400' as const,
+    lineHeight: 18,
   },
   // Legacy (keep for compatibility)
   largeTitle: {
@@ -115,18 +118,18 @@ export const typography = {
 };
 
 export const borderRadius = {
-  sm: 6,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  full: 9999,
+  sm: 8,       // Small elements (bumped +2)
+  md: 14,      // Cards (bumped +2 for premium feel)
+  lg: 18,      // Main cards (bumped +2)
+  xl: 24,      // Pills, large buttons
+  full: 9999,  // Circular
 };
 
-// Touch target sizes for accessibility (WCAG 2.5.5)
+// Touch target sizes - oversized for golf gloves
 export const touchTargets = {
-  minimum: 48,      // Minimum touch target size (dp)
-  comfortable: 56,  // Comfortable touch target size (dp)
-  dense: 44,        // Dense UI minimum (iOS HIG)
+  minimum: 52,      // Minimum (slightly oversized for gloves)
+  comfortable: 60,  // Comfortable target size
+  dense: 48,        // Dense UI minimum
 };
 
 // Common hit slop for small icons
@@ -216,35 +219,55 @@ export const glass = {
   },
 };
 
-// Component style presets (matching reference design)
+// Card shadow for subtle depth (premium hardware feel)
+export const cardShadow = {
+  shadowColor: '#000000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.3,
+  shadowRadius: 8,
+  elevation: 6,
+};
+
+// Card gradient colors (top-to-bottom for depth)
+export const cardGradient = {
+  colors: [colors.surface, colors.surfaceBottom] as const,
+  start: { x: 0, y: 0 },
+  end: { x: 0, y: 1 },
+};
+
+// Component style presets
 export const components = {
+  // Standard card with depth
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg, // Increased from md for breathing room
     marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...cardShadow,
   },
   weatherDataRow: {
     flexDirection: 'row' as const,
     justifyContent: 'space-between' as const,
     paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   incrementButton: {
     backgroundColor: colors.surfaceElevated,
     borderRadius: borderRadius.sm,
-    paddingVertical: spacing.sm,
+    paddingVertical: 12,
     paddingHorizontal: spacing.md,
-    minWidth: 48,
+    minWidth: touchTargets.minimum,
+    minHeight: touchTargets.minimum,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
+  // Primary button - green for ACTIONS only
   primaryButton: {
     backgroundColor: colors.primary,
     borderRadius: borderRadius.xl,
-    paddingVertical: spacing.md,
+    paddingVertical: 14,
     paddingHorizontal: spacing.lg,
+    minHeight: touchTargets.minimum,
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,

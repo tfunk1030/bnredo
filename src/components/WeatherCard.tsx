@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MapPin, RefreshCw, Thermometer, Droplets, Wind, Gauge } from 'lucide-react-native';
-import { colors, spacing, borderRadius, hitSlop, typography } from '@/src/constants/theme';
+import { colors, spacing, borderRadius, hitSlop, typography, cardShadow } from '@/src/constants/theme';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
 import { getWindDirectionLabel } from '@/src/services/weather-service';
@@ -89,17 +89,17 @@ export const WeatherCard = React.memo(function WeatherCard() {
 
       <View style={styles.grid} accessibilityRole="summary">
         <View style={styles.gridItem} accessible accessibilityLabel={`Temperature: ${tempFormat?.value} ${tempFormat?.label}`}>
-          <Thermometer color={colors.accent} size={18} />
+          <Thermometer color={colors.greenMuted} size={16} strokeWidth={1.5} />
           <Text style={styles.gridValue}>{tempFormat?.value}{tempFormat?.shortLabel}</Text>
           <Text style={styles.gridLabel}>Temp</Text>
         </View>
         <View style={styles.gridItem} accessible accessibilityLabel={`Humidity: ${weather.humidity} percent`}>
-          <Droplets color={colors.primary} size={18} />
+          <Droplets color={colors.textSecondary} size={16} strokeWidth={1.5} />
           <Text style={styles.gridValue}>{weather.humidity}%</Text>
           <Text style={styles.gridLabel}>Humidity</Text>
         </View>
         <View style={styles.gridItem} accessible accessibilityLabel={`Wind: ${windFormat?.value} ${windFormat?.label} from ${getWindDirectionLabel(weather.windDirection)}`}>
-          <Wind color={colors.textSecondary} size={18} />
+          <Wind color={colors.greenMuted} size={16} strokeWidth={1.5} />
           <Text style={styles.gridValue}>
             {windFormat?.value}
             <Text style={styles.gridUnit}> {windFormat?.shortLabel}</Text>
@@ -107,7 +107,7 @@ export const WeatherCard = React.memo(function WeatherCard() {
           <Text style={styles.gridLabel}>{getWindDirectionLabel(weather.windDirection)}</Text>
         </View>
         <View style={styles.gridItem} accessible accessibilityLabel={`Altitude: ${altFormat?.value} ${altFormat?.label}`}>
-          <Gauge color={colors.textSecondary} size={18} />
+          <Gauge color={colors.textSecondary} size={16} strokeWidth={1.5} />
           <Text style={styles.gridValue}>{altFormat?.value}</Text>
           <Text style={styles.gridLabel}>Alt ({altFormat?.shortLabel})</Text>
         </View>
@@ -124,10 +124,11 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    padding: spacing.lg,
     marginHorizontal: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    ...cardShadow,
   },
   loadingContainer: {
     flexDirection: 'row',

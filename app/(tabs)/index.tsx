@@ -10,7 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import { Minus, Plus, ChevronDown, ChevronUp } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography, touchTargets, glass } from '@/src/constants/theme';
+import { colors, spacing, borderRadius, typography, touchTargets, glass, cardShadow, cardGradient } from '@/src/constants/theme';
 import { WeatherCard } from '@/src/components/WeatherCard';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useClubBag } from '@/src/contexts/ClubBagContext';
@@ -259,36 +259,37 @@ const styles = StyleSheet.create({
   yardageSection: {
     backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    ...cardShadow,
   },
   sectionLabel: {
+    ...typography.sectionTitle,
     color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '500',
     textAlign: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   yardageDisplay: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   yardageValue: {
     ...typography.largeTitle,
     color: colors.text,
   },
   yardageUnit: {
-    color: colors.textSecondary,
+    color: colors.textMuted,
     fontSize: 18,
+    fontWeight: '400',
     marginLeft: spacing.xs,
   },
   sliderContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm, // Tighter: slider + buttons are related
   },
   slider: {
     width: '100%',
@@ -298,6 +299,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.xs,
+    marginBottom: spacing.sm,
   },
   sliderLabel: {
     color: colors.textMuted,
@@ -306,15 +308,15 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: spacing.md,
+    gap: spacing.sm, // Tighter gap between buttons
   },
   adjustButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surfaceElevated,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
+    paddingVertical: 12,
+    borderRadius: borderRadius.sm,
     gap: 4,
     minWidth: 64,
     minHeight: touchTargets.minimum,
@@ -323,53 +325,55 @@ const styles = StyleSheet.create({
   adjustButtonText: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '400', // Regular weight (only hero = bold)
   },
   resultSection: {
     backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.border,
+    ...cardShadow,
   },
   playsLikeLabel: {
     ...typography.sectionTitle,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   playsLikeValue: {
     ...typography.hero,
-    color: colors.primary,
+    color: colors.primary, // Green for ACTION — this is the hero metric
     textAlign: 'center',
   },
   playsLikeUnit: {
-    fontSize: 24,
-    fontWeight: '500',
-    color: colors.textSecondary,
+    fontSize: 20,
+    fontWeight: '400',
+    color: colors.textMuted,
   },
   clubRecommendation: {
     alignItems: 'center',
-    marginTop: spacing.lg,
-    paddingTop: spacing.lg,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   clubLabel: {
+    ...typography.dataLabel,
     color: colors.textSecondary,
-    fontSize: 12,
     marginBottom: spacing.xs,
   },
   clubName: {
-    color: colors.accent,
+    color: colors.primary, // Green for ACTION — recommended club
     fontSize: 24,
     fontWeight: '700',
   },
   clubDistance: {
     color: colors.textMuted,
     fontSize: 13,
+    fontWeight: '400',
     marginTop: 4,
   },
   breakdownToggle: {
