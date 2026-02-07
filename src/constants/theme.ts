@@ -46,39 +46,43 @@ export const spacing = {
 };
 
 export const typography = {
-  // Hero yardage display (148 yards)
+  // ── NUMBER STYLES (SF Pro Display / optionally JetBrains Mono) ──
+  // Hero yardage (148 yards) — the one bold thing on screen
   hero: {
     fontSize: 52,
     fontWeight: '700' as const,
     lineHeight: 60,
     letterSpacing: -1.5,
   },
-  // Large numbers (197 yards)
+  // Secondary distance (197 yds)
   largeNumber: {
-    fontSize: 48,
-    fontWeight: '700' as const,
-    lineHeight: 56,
-    letterSpacing: -1,
-  },
-  // Medium numbers (66°F, 22%)
-  mediumNumber: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '600' as const,
-    lineHeight: 38,
+    lineHeight: 44,
+    letterSpacing: -0.5,
   },
-  // Small data values
+  // Stat numbers (66°F, 22%, 7 mph, 1017)
+  mediumNumber: {
+    fontSize: 28,
+    fontWeight: '500' as const,
+    lineHeight: 34,
+  },
+  // Compact data values in rows
   dataValue: {
     fontSize: 17,
-    fontWeight: '600' as const,
+    fontWeight: '500' as const,
     lineHeight: 22,
   },
-  // Section titles (Plays Like, Target Distance) - no uppercase
+
+  // ── TEXT STYLES (SF Pro Text) ──
+  // Section titles (Plays Like, Target Distance)
   sectionTitle: {
     fontSize: 13,
-    fontWeight: '400' as const,
+    fontWeight: '500' as const,
     lineHeight: 18,
+    letterSpacing: 0.5, // Slight letter spacing per render rec
   },
-  // Data labels (Temp, Humidity, WNW) - no uppercase, increased line-height
+  // Data labels (Temp, Humidity, WNW)
   dataLabel: {
     fontSize: 12,
     fontWeight: '400' as const,
