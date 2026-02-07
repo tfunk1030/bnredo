@@ -1,23 +1,30 @@
 export const colors = {
-  background: '#0d1117',
-  surface: '#161b22',
-  surfaceElevated: '#21262d',
-  border: '#30363d',
+  // Backgrounds - Pure black aesthetic
+  background: '#000000',        // Pure black base
+  surface: '#1C1C1E',          // Dark charcoal cards
+  surfaceElevated: '#2C2C2E',  // Elevated surfaces
+  border: '#38383A',           // Subtle borders
+  divider: '#48484A',          // Section dividers
 
-  primary: '#238636',
-  primaryDark: '#1a7f37',
-  primaryLight: '#2ea043',
+  // Primary - Lime green accent
+  primary: '#7FFF00',          // Bright lime green
+  primaryDark: '#6FE000',      // Darker lime
+  primaryLight: '#8FFF20',     // Lighter lime
 
-  accent: '#c9a227',
-  accentDark: '#a68621',
+  // Legacy accent (kept for compatibility)
+  accent: '#7FFF00',           // Matches primary
+  accentDark: '#6FE000',
 
-  text: '#f0f6fc',
-  textSecondary: '#8b949e',
-  textMuted: '#6e7681',
+  // Text
+  text: '#FFFFFF',             // White - main text
+  textSecondary: '#8E8E93',    // Gray - labels, metadata
+  textMuted: '#636366',        // Darker gray - disabled
+  textAccent: '#7FFF00',       // Lime green - highlighted values
 
-  success: '#238636',
-  warning: '#d29922',
-  error: '#f85149',
+  // Feedback colors
+  success: '#34C759',          // Green
+  warning: '#FF9500',          // Orange
+  error: '#FF3B30',            // Red
 
   white: '#ffffff',
   black: '#000000',
@@ -34,6 +41,47 @@ export const spacing = {
 };
 
 export const typography = {
+  // Hero yardage display (148 yards)
+  hero: {
+    fontSize: 72,
+    fontWeight: '700' as const,
+    lineHeight: 80,
+    letterSpacing: -2,
+  },
+  // Large numbers (197 yards)
+  largeNumber: {
+    fontSize: 48,
+    fontWeight: '700' as const,
+    lineHeight: 56,
+    letterSpacing: -1,
+  },
+  // Medium numbers (66°F, 22%)
+  mediumNumber: {
+    fontSize: 32,
+    fontWeight: '600' as const,
+    lineHeight: 38,
+  },
+  // Small data values
+  dataValue: {
+    fontSize: 17,
+    fontWeight: '600' as const,
+    lineHeight: 22,
+  },
+  // Section titles (Plays Like, Target Distance)
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    lineHeight: 18,
+    textTransform: 'uppercase' as const,
+  },
+  // Data labels (Temp, Humidity, WNW)
+  dataLabel: {
+    fontSize: 11,
+    fontWeight: '400' as const,
+    lineHeight: 14,
+    textTransform: 'uppercase' as const,
+  },
+  // Legacy (keep for compatibility)
   largeTitle: {
     fontSize: 48,
     fontWeight: '700' as const,
@@ -50,9 +98,9 @@ export const typography = {
     lineHeight: 26,
   },
   body: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '400' as const,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   caption: {
     fontSize: 13,
@@ -152,18 +200,63 @@ export const glass = {
   },
   // Border opacity for glass edges
   borderOpacity: 0.15,
-  // Tint colors (applied over blur)
+  // Tint colors (applied over blur) - Updated for lime green
   tint: {
-    dark: 'rgba(0, 0, 0, 0.3)',
+    dark: 'rgba(0, 0, 0, 0.6)',
     light: 'rgba(255, 255, 255, 0.1)',
-    accent: 'rgba(201, 162, 39, 0.15)', // accent color with transparency
-    primary: 'rgba(35, 134, 54, 0.12)', // primary green with transparency
-    accentStrong: 'rgba(201, 162, 39, 0.2)', // stronger gold for premium active
+    accent: 'rgba(127, 255, 0, 0.15)',    // lime green with transparency
+    primary: 'rgba(127, 255, 0, 0.12)',   // lime green primary
+    accentStrong: 'rgba(127, 255, 0, 0.2)', // stronger lime for active states
   },
   // Card background tints (more subtle, for surface overlays)
   cardTint: {
-    success: 'rgba(35, 134, 54, 0.06)', // subtle green for result cards
-    premium: 'rgba(201, 162, 39, 0.08)', // subtle gold for premium sections
-    premiumActive: 'rgba(201, 162, 39, 0.12)', // stronger gold when premium is active
+    success: 'rgba(52, 199, 89, 0.06)',   // subtle green for result cards
+    premium: 'rgba(127, 255, 0, 0.08)',   // subtle lime for premium sections
+    premiumActive: 'rgba(127, 255, 0, 0.12)', // stronger lime when premium is active
+  },
+};
+
+// Component style presets (matching reference design)
+export const components = {
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  weatherDataRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  incrementButton: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    minWidth: 48,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  primaryButton: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  primaryButtonText: {
+    color: colors.black,
+    fontSize: 17,
+    fontWeight: '600' as const,
+  },
+  slider: {
+    minimumTrackTintColor: colors.primary,
+    maximumTrackTintColor: colors.border,
+    thumbTintColor: colors.primary,
   },
 };

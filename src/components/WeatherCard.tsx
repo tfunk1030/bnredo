@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MapPin, RefreshCw, Thermometer, Droplets, Wind, Gauge } from 'lucide-react-native';
-import { colors, spacing, borderRadius, hitSlop } from '@/src/constants/theme';
+import { colors, spacing, borderRadius, hitSlop, typography } from '@/src/constants/theme';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
 import { getWindDirectionLabel } from '@/src/services/weather-service';
@@ -201,17 +201,17 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   gridValue: {
+    ...typography.dataValue,
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
   },
   gridUnit: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '400',
+    color: colors.textSecondary,
   },
   gridLabel: {
-    color: colors.textMuted,
-    fontSize: 11,
+    ...typography.dataLabel,
+    color: colors.textSecondary,
   },
   errorText: {
     color: colors.error,

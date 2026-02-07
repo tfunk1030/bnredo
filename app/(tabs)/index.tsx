@@ -87,7 +87,7 @@ export default function ShotScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <LinearGradient
-        colors={['rgba(35, 134, 54, 0.08)', 'transparent']}
+        colors={['rgba(127, 255, 0, 0.08)', 'transparent']}
         style={styles.gradientOverlay}
         pointerEvents="none"
       />
@@ -326,30 +326,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   resultSection: {
-    backgroundColor: glass.cardTint.success,
+    backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
     marginTop: spacing.lg,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.primary,
   },
   playsLikeLabel: {
+    ...typography.sectionTitle,
     color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '500',
     textAlign: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   playsLikeValue: {
-    fontSize: 56,
-    fontWeight: '700',
+    ...typography.hero,
     color: colors.primary,
     textAlign: 'center',
   },
   playsLikeUnit: {
-    fontSize: 20,
-    fontWeight: '400',
+    fontSize: 24,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
   clubRecommendation: {
     alignItems: 'center',
