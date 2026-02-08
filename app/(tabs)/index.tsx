@@ -2,11 +2,12 @@
  * Shot Screen — Render-Matched Version
  * 
  * Implements Taylor's detailed render-matching guide:
- * 1. SceneBackground (gradient + vignette)
+ * 1. SceneBackground (gradient + bottom fade)
  * 2. RenderCard everywhere
- * 3. Material System tokens
+ * 3. Material System tokens (single source of truth)
  * 4. Spacing rhythm (8/12/16 inside, 16 between)
  * 5. Typography hierarchy
+ * 6. Full accessibility props on all controls
  * 
  * Feb 8, 2026
  */
@@ -33,6 +34,7 @@ import { YardageModelEnhanced, SkillLevel } from '@/src/core/models/yardagemodel
 import { useHapticSlider } from '@/src/hooks/useHapticSlider';
 import { formatDistance } from '@/src/utils/unit-conversions';
 import {
+  materialColors,
   spacing,
   typography,
   radii,
@@ -106,7 +108,7 @@ export default function ShotScreen() {
         <WeatherCard />
 
         {/* TARGET DISTANCE CARD */}
-        <RenderCard style={styles.cardSpacing} padding={spacing.md}>
+        <RenderCard containerStyle={styles.cardSpacing} padding={spacing.md}>
           <Text style={styles.sectionLabel}>Target Distance</Text>
 
           <View style={styles.yardageDisplay}>
@@ -127,9 +129,18 @@ export default function ShotScreen() {
                 setTargetYardage(value);
               }}
               onSlidingComplete={resetSliderHaptic}
-              minimumTrackTintColor="#39FF14"
+              minimumTrackTintColor={materialColors.primaryVibrant}
               maximumTrackTintColor={strokes.outer}
-              thumbTintColor="#39FF14"
+              thumbTintColor={materialColors.primaryVibrant}
+              accessibilityRole="adjustable"
+              accessibilityLabel={`Target distance: ${targetYardage} ${targetFormat.label}`}
+              accessibilityHint="Swipe up or down to adjust target distance"
+              accessibilityValue={{
+                min: 50,
+                max: 350,
+                now: targetYardage,
+                text: `${targetYardage} ${targetFormat.label}`,
+              }}
             />
             <View style={styles.sliderLabels}>
               <Text style={styles.sliderLabel}>50</Text>
@@ -143,24 +154,32 @@ export default function ShotScreen() {
               <Pressable
                 key={amount}
                 onPress={() => handleIncrement(amount)}
-                style={({ pressed }) => [
-                  styles.adjustButton,
-                  pressed && styles.adjustButtonPressed,
-                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`${amount > 0 ? 'Add' : 'Subtract'} ${Math.abs(amount)} ${Math.abs(amount) === 1 ? 'yard' : 'yards'}`}
+                accessibilityHint={`${amount > 0 ? 'Increases' : 'Decreases'} target distance by ${Math.abs(amount)}`}
               >
-                <LinearGradient
-                  colors={controls.normal.gradient.colors}
-                  start={controls.normal.gradient.start}
-                  end={controls.normal.gradient.end}
-                  style={styles.adjustButtonGradient}
-                >
-                  {amount < 0 ? (
-                    <Minus color="rgba(255,255,255,0.85)" size={18} />
-                  ) : (
-                    <Plus color="rgba(255,255,255,0.85)" size={18} />
-                  )}
-                  <Text style={styles.adjustButtonText}>{Math.abs(amount)}</Text>
-                </LinearGradient>
+                {({ pressed }) => (
+                  <View
+                    style={[
+                      styles.adjustButton,
+                      { borderColor: pressed ? controls.pressed.stroke : controls.normal.stroke },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={pressed ? controls.pressed.gradient.colors : controls.normal.gradient.colors}
+                      start={controls.normal.gradient.start}
+                      end={controls.normal.gradient.end}
+                      style={styles.adjustButtonGradient}
+                    >
+                      {amount < 0 ? (
+                        <Minus color="rgba(255,255,255,0.85)" size={18} />
+                      ) : (
+                        <Plus color="rgba(255,255,255,0.85)" size={18} />
+                      )}
+                      <Text style={styles.adjustButtonText}>{Math.abs(amount)}</Text>
+                    </LinearGradient>
+                  </View>
+                )}
               </Pressable>
             ))}
           </View>
@@ -168,7 +187,7 @@ export default function ShotScreen() {
 
         {/* PLAYS LIKE CARD */}
         {calculations && (
-          <RenderCard style={styles.cardSpacing} padding={spacing.md}>
+          <RenderCard containerStyle={styles.cardSpacing} padding={spacing.md}>
             <Text style={styles.sectionLabel}>Plays Like</Text>
             <Text style={styles.playsLikeValue}>
               {adjustedFormat?.value}
@@ -190,6 +209,9 @@ export default function ShotScreen() {
             <TouchableOpacity
               style={styles.breakdownToggle}
               onPress={() => setShowBreakdown(!showBreakdown)}
+              accessibilityRole="button"
+              accessibilityLabel={`${showBreakdown ? 'Hide' : 'Show'} environmental breakdown`}
+              accessibilityState={{ expanded: showBreakdown }}
             >
               <Text style={styles.breakdownToggleText}>
                 {showBreakdown ? 'Hide' : 'Show'} Breakdown
@@ -284,9 +306,6 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: controls.normal.stroke,
   },
-  adjustButtonPressed: {
-    opacity: 0.8,
-  },
   adjustButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -298,14 +317,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   adjustButtonText: {
-    ...typography.medium,
-    fontSize: 15,
+    ...typography.button,
   },
 
   // PLAYS LIKE
   playsLikeValue: {
     ...typography.hero,
-    color: '#39FF14',
+    color: materialColors.primaryVibrant,
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
@@ -327,7 +345,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   clubName: {
-    color: '#39FF14',
+    color: materialColors.primaryVibrant,
     fontSize: 22,
     fontWeight: '600',
     letterSpacing: -0.5,
@@ -357,8 +375,7 @@ const styles = StyleSheet.create({
     borderTopColor: strokes.inner,
   },
   breakdownLabel: {
-    ...typography.medium,
-    fontSize: 14,
+    ...typography.small,
     marginBottom: 2,
   },
   breakdownSubtext: {
@@ -367,8 +384,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   breakdownValue: {
-    ...typography.medium,
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.body,
   },
 });

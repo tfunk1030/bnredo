@@ -5,8 +5,7 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { AuthProvider } from '@/src/contexts/AuthContext';
 import { UserPreferencesProvider } from '@/src/contexts/UserPreferencesContext';
 import { ClubBagProvider } from '@/src/contexts/ClubBagContext';
-import { WeatherProvider, useWeather } from '@/src/contexts/WeatherContext';
-import { WindBackground } from '@/src/components/WindBackground';
+import { WeatherProvider } from '@/src/contexts/WeatherContext';
 import { colors } from '@/src/constants/theme';
 
 // Inner component that can access weather context

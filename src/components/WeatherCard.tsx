@@ -1,7 +1,14 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MapPin, RefreshCw, Thermometer, Droplets, Wind, Gauge } from 'lucide-react-native';
-import { colors, spacing, borderRadius, hitSlop, typography, cardShadow } from '@/src/constants/theme';
+import {
+  materialColors,
+  spacing,
+  typography,
+} from '@/src/constants/material-system';
+// Semantic colors (warning, error, etc.) not yet in material system
+import { colors, hitSlop } from '@/src/constants/theme';
+import { RenderCard } from '@/src/components/ui';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
 import { getWindDirectionLabel } from '@/src/services/weather-service';
@@ -25,38 +32,40 @@ export const WeatherCard = React.memo(function WeatherCard() {
 
   if (isLoading) {
     return (
-      <View style={styles.container} accessibilityRole="alert" accessibilityLiveRegion="polite">
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color={colors.primary} size="small" accessibilityLabel="Loading" />
+      <RenderCard containerStyle={styles.cardPosition} padding={spacing.md}>
+        <View style={styles.loadingContainer} accessibilityRole="alert" accessibilityLiveRegion="polite">
+          <ActivityIndicator color={materialColors.primaryMuted} size="small" accessibilityLabel="Loading" />
           <Text style={styles.loadingText}>Loading weather...</Text>
         </View>
-      </View>
+      </RenderCard>
     );
   }
 
   if (!weather) {
     return (
-      <View style={styles.container} accessibilityRole="alert">
-        <Text style={styles.errorText}>Unable to load weather</Text>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={handleRefresh}
-          accessibilityRole="button"
-          accessibilityLabel="Retry loading weather"
-          hitSlop={hitSlop.medium}
-        >
-          <RefreshCw color={colors.primary} size={16} />
-          <Text style={styles.refreshText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
+      <RenderCard containerStyle={styles.cardPosition} padding={spacing.md}>
+        <View accessibilityRole="alert">
+          <Text style={styles.errorText}>Unable to load weather</Text>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={handleRefresh}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading weather"
+            hitSlop={hitSlop.medium}
+          >
+            <RefreshCw color={materialColors.primaryMuted} size={16} />
+            <Text style={styles.refreshText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </RenderCard>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <RenderCard containerStyle={styles.cardPosition} padding={spacing.md}>
       <View style={styles.header}>
         <View style={styles.locationRow}>
-          <MapPin color={colors.textSecondary} size={14} />
+          <MapPin color={typography.label.color} size={14} />
           <Text style={styles.locationText} numberOfLines={1}>
             {weather.locationName}
           </Text>
@@ -81,7 +90,7 @@ export const WeatherCard = React.memo(function WeatherCard() {
           hitSlop={hitSlop.medium}
         >
           <RefreshCw
-            color={isRefreshing ? colors.textMuted : colors.textSecondary}
+            color={isRefreshing ? typography.label.color : typography.unit.color}
             size={16}
           />
         </TouchableOpacity>
@@ -89,17 +98,17 @@ export const WeatherCard = React.memo(function WeatherCard() {
 
       <View style={styles.grid} accessibilityRole="summary">
         <View style={styles.gridItem} accessible accessibilityLabel={`Temperature: ${tempFormat?.value} ${tempFormat?.label}`}>
-          <Thermometer color={colors.greenMuted} size={16} strokeWidth={1.5} />
+          <Thermometer color={materialColors.primaryMuted} size={16} strokeWidth={1.5} />
           <Text style={styles.gridValue}>{tempFormat?.value}{tempFormat?.shortLabel}</Text>
           <Text style={styles.gridLabel}>Temp</Text>
         </View>
         <View style={styles.gridItem} accessible accessibilityLabel={`Humidity: ${weather.humidity} percent`}>
-          <Droplets color={colors.textSecondary} size={16} strokeWidth={1.5} />
+          <Droplets color={typography.unit.color} size={16} strokeWidth={1.5} />
           <Text style={styles.gridValue}>{weather.humidity}%</Text>
           <Text style={styles.gridLabel}>Humidity</Text>
         </View>
         <View style={styles.gridItem} accessible accessibilityLabel={`Wind: ${windFormat?.value} ${windFormat?.label} from ${getWindDirectionLabel(weather.windDirection)}`}>
-          <Wind color={colors.greenMuted} size={16} strokeWidth={1.5} />
+          <Wind color={materialColors.primaryMuted} size={16} strokeWidth={1.5} />
           <Text style={styles.gridValue}>
             {windFormat?.value}
             <Text style={styles.gridUnit}> {windFormat?.shortLabel}</Text>
@@ -107,7 +116,7 @@ export const WeatherCard = React.memo(function WeatherCard() {
           <Text style={styles.gridLabel}>{getWindDirectionLabel(weather.windDirection)}</Text>
         </View>
         <View style={styles.gridItem} accessible accessibilityLabel={`Altitude: ${altFormat?.value} ${altFormat?.label}`}>
-          <Gauge color={colors.textSecondary} size={16} strokeWidth={1.5} />
+          <Gauge color={typography.unit.color} size={16} strokeWidth={1.5} />
           <Text style={styles.gridValue}>{altFormat?.value}</Text>
           <Text style={styles.gridLabel}>Alt ({altFormat?.shortLabel})</Text>
         </View>
@@ -116,80 +125,74 @@ export const WeatherCard = React.memo(function WeatherCard() {
       {error && !isOffline && (
         <Text style={styles.errorBanner}>{error}</Text>
       )}
-    </View>
+    </RenderCard>
   );
 });
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
+  // Positioning only — RenderCard handles surface/shadow/border
+  cardPosition: {
     marginHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...cardShadow,
   },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
     paddingVertical: spacing.md,
   },
   loadingText: {
-    color: colors.textSecondary,
-    fontSize: 14,
+    ...typography.label,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.xxs,
     flex: 1,
   },
   locationText: {
-    color: colors.textSecondary,
+    ...typography.label,
     fontSize: 13,
     flex: 1,
   },
   offlineBadge: {
     backgroundColor: colors.warning,
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: spacing.xxs,
     paddingVertical: 2,
-    borderRadius: borderRadius.sm,
+    borderRadius: 6,
   },
   offlineBadgeText: {
-    color: colors.black,
+    color: '#000000',
     fontSize: 10,
     fontWeight: '600',
   },
   manualBadge: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xs,
+    backgroundColor: materialColors.primaryMuted,
+    paddingHorizontal: spacing.xxs,
     paddingVertical: 2,
-    borderRadius: borderRadius.sm,
+    borderRadius: 6,
   },
   manualBadgeText: {
-    color: colors.white,
+    color: '#ffffff',
     fontSize: 10,
     fontWeight: '600',
   },
   refreshButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    padding: spacing.sm,
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: borderRadius.sm,
+    gap: spacing.xxs,
+    padding: spacing.xs,
+    backgroundColor: 'rgba(40, 40, 42, 0.85)',
+    borderRadius: 6,
   },
   refreshText: {
-    color: colors.primary,
+    color: materialColors.primaryMuted,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -199,20 +202,18 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xxs,
   },
   gridValue: {
-    ...typography.dataValue,
-    color: colors.text,
+    ...typography.medium,
+    fontSize: 15,
   },
   gridUnit: {
+    ...typography.label,
     fontSize: 13,
-    fontWeight: '400',
-    color: colors.textSecondary,
   },
   gridLabel: {
-    ...typography.dataLabel,
-    color: colors.textSecondary,
+    ...typography.label,
   },
   errorText: {
     color: colors.error,
@@ -223,6 +224,6 @@ const styles = StyleSheet.create({
     color: colors.warning,
     fontSize: 11,
     textAlign: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
 });

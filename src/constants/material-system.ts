@@ -8,6 +8,19 @@
  */
 
 // ──────────────────────────────────────────────────────────────────────────
+// COLORS (Accent & Semantic)
+// ──────────────────────────────────────────────────────────────────────────
+
+export const materialColors = {
+  /** Vibrant neon lime — hero numbers, slider, accent elements */
+  primaryVibrant: '#39FF14',
+  /** Gradient end for vibrant green buttons */
+  primaryVibrantEnd: '#28CD41',
+  /** Muted golf green — informational indicators, icons */
+  primaryMuted: '#4B9E50',
+} as const;
+
+// ──────────────────────────────────────────────────────────────────────────
 // RADII
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -37,12 +50,15 @@ export const surface = {
 } as const;
 
 // ──────────────────────────────────────────────────────────────────────────
-// SHADOWS (iOS — Two-Layer System)
+// SHADOWS (Two-Layer System — iOS + Android)
 // ──────────────────────────────────────────────────────────────────────────
 
 /**
  * Ambient shadow: soft, large, defines the "lift"
  * Contact shadow: sharper, tighter, defines the "ground contact"
+ * 
+ * iOS uses shadowColor/Offset/Opacity/Radius.
+ * Android uses elevation (shadowColor/Offset/Opacity/Radius are ignored).
  * 
  * NEVER put overflow:'hidden' on shadow layers!
  */
@@ -54,6 +70,7 @@ export const shadows = {
     shadowOffset: { width: 0, height: 20 },   // y: 18-24
     shadowOpacity: 0.40,                      // 0.35-0.45
     shadowRadius: 30,                         // 26-34
+    elevation: 12,                            // Android equivalent
   },
   
   // Contact shadow (sharp, tight to surface)
@@ -62,6 +79,7 @@ export const shadows = {
     shadowOffset: { width: 0, height: 8 },    // y: 6-10
     shadowOpacity: 0.52,                      // 0.45-0.60
     shadowRadius: 12,                         // 10-14
+    elevation: 6,                             // Android equivalent
   },
   
   // Control shadows (lighter, for buttons/slider)
@@ -70,6 +88,7 @@ export const shadows = {
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
+    elevation: 4,                             // Android equivalent
   },
   
   controlContact: {
@@ -77,6 +96,7 @@ export const shadows = {
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.35,
     shadowRadius: 4,
+    elevation: 2,                             // Android equivalent
   },
 } as const;
 
@@ -93,6 +113,7 @@ export const shadows = {
 
 export const spacing = {
   // Inside card spacing (tight)
+  xxs: 4,
   xs: 8,
   sm: 12,
   md: 16,
@@ -113,7 +134,7 @@ export const spacing = {
 /**
  * Goal: UI feels like it sits in a space, not on pure black
  * 
- * Full-screen gradient + vignette overlay
+ * Full-screen gradient + bottom fade overlay
  */
 
 export const background = {
@@ -124,11 +145,13 @@ export const background = {
     end: { x: 0.5, y: 1 },
   },
   
-  // Vignette overlay (bottom weight)
-  vignette: {
+  // Bottom fade overlay (darkens lower portion of screen for depth)
+  // Note: true radial vignette not possible with expo-linear-gradient.
+  // This provides vertical bottom-weighted darkening only.
+  bottomFade: {
     colors: [
       'rgba(0, 0, 0, 0)',      // Transparent center
-      'rgba(0, 0, 0, 0.3)',    // Dark edges
+      'rgba(0, 0, 0, 0.3)',    // Dark bottom
     ] as const,
     start: { x: 0.5, y: 0.5 },
     end: { x: 0.5, y: 1 },
@@ -192,6 +215,33 @@ export const typography = {
     color: 'rgba(255, 255, 255, 0.50)',  // Muted
   },
   
+  // Small body text (breakdown labels, data descriptions)
+  small: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+    letterSpacing: -0.2,
+    lineHeight: 18,
+    color: 'rgba(255, 255, 255, 0.90)',
+  },
+
+  // Body text (breakdown values, secondary data)
+  body: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    letterSpacing: -0.2,
+    lineHeight: 20,
+    color: 'rgba(255, 255, 255, 0.90)',
+  },
+
+  // Button text (increment button numbers)
+  button: {
+    fontSize: 15,
+    fontWeight: '500' as const,
+    letterSpacing: -0.3,
+    lineHeight: 20,
+    color: 'rgba(255, 255, 255, 0.90)',
+  },
+
   // Section titles (Plays Like, Target Distance)
   sectionTitle: {
     fontSize: 12,
@@ -256,7 +306,7 @@ export const glow = {
   hero: {
     // Outer glow layer
     glow: {
-      shadowColor: '#39FF14',  // Vibrant green
+      shadowColor: materialColors.primaryVibrant,
       shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0.14,
       shadowRadius: 16,
@@ -276,6 +326,7 @@ export const glow = {
 // ──────────────────────────────────────────────────────────────────────────
 
 export type MaterialSystem = {
+  materialColors: typeof materialColors;
   radii: typeof radii;
   strokes: typeof strokes;
   surface: typeof surface;

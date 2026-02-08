@@ -1,11 +1,14 @@
 /**
- * SceneBackground — Background with Gradient + Vignette
+ * SceneBackground — Background with Gradient + Bottom Fade
  * 
  * Goal: UI should feel like it sits in a space, not on pure black.
  * 
  * Layers:
- * 1. Subtle top-to-bottom gradient (#0D0D0F → #000000)
- * 2. Vignette overlay (transparent center → dark edges)
+ * 1. Subtle top-to-bottom gradient (#0D0D0F -> #000000)
+ * 2. Bottom fade overlay (transparent center -> dark bottom)
+ * 
+ * Note: A true radial vignette is not possible with expo-linear-gradient.
+ * This provides vertical bottom-weighted darkening for depth.
  * 
  * Based on Taylor's render-matching guide (Feb 8, 2026).
  */
@@ -28,11 +31,11 @@ export function SceneBackground({ children, style }: SceneBackgroundProps) {
       end={background.gradient.end}
       style={[styles.container, style]}
     >
-      {/* Vignette overlay */}
+      {/* Bottom fade overlay for depth */}
       <LinearGradient
-        colors={background.vignette.colors}
-        start={background.vignette.start}
-        end={background.vignette.end}
+        colors={background.bottomFade.colors}
+        start={background.bottomFade.start}
+        end={background.bottomFade.end}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
