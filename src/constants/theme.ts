@@ -1,23 +1,23 @@
 export const colors = {
-  // Backgrounds - near-black, neutral (no green tint)
-  background: '#0A0E0A',       // Near-black with very slight cool tint
-  surface: '#1A1E1A',          // Card background (neutral dark)
-  surfaceBottom: '#15181D',    // Card gradient end
-  surfaceElevated: '#252825',  // Elevated surfaces (buttons)
-  border: '#2A2F2A',           // Subtle borders (very low contrast)
-  divider: '#333636',          // Section dividers
+  // Backgrounds - pure dark, no green tint
+  background: '#080808',       // Near-black (neutral, no green)
+  surface: '#161616',          // Card background (neutral charcoal)
+  surfaceBottom: '#131313',    // Card gradient end
+  surfaceElevated: '#222222',  // Elevated surfaces (buttons)
+  border: '#222222',           // Very subtle borders (barely visible)
+  divider: '#2A2A2A',          // Section dividers
 
   // Primary green - ACTIONS ONLY (Lock Target, Plays Like, Recommended Club)
-  primary: '#4CAF50',          // Golf green (matched to reference)
+  primary: '#4B9E50',          // Muted golf green (not too bright)
   primaryDark: '#3D8B42',      // Darker for pressed states
-  primaryLight: '#5CB860',     // Lighter for hover/focus
+  primaryLight: '#5AAF5E',     // Lighter for hover/focus
 
   // Muted green - INFORMATIONAL (icons, indicators, wind arrows)
   greenMuted: '#3D7A41',       // Desaturated green for non-critical indicators
   greenSubtle: '#2D5E30',      // Very subtle green for backgrounds/tints
 
   // Legacy accent (kept for compatibility)
-  accent: '#4CAF50',
+  accent: '#4B9E50',
   accentDark: '#3D8B42',
 
   // Text - matched to reference
@@ -46,32 +46,32 @@ export const spacing = {
 };
 
 export const typography = {
-  // ── NUMBER STYLES (SF Pro Display / optionally JetBrains Mono) ──
+  // ── NUMBER STYLES (SF Pro Display) ──
   // Hero yardage (148 yards) — the one bold thing on screen
   hero: {
-    fontSize: 52,
+    fontSize: 42,
     fontWeight: '700' as const,
-    lineHeight: 60,
-    letterSpacing: -1.5,
+    lineHeight: 48,
+    letterSpacing: -1,
   },
-  // Secondary distance (197 yds)
+  // Secondary distance (197 yds) / target distance
   largeNumber: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '600' as const,
-    lineHeight: 44,
+    lineHeight: 38,
     letterSpacing: -0.5,
   },
   // Stat numbers (66°F, 22%, 7 mph, 1017)
   mediumNumber: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '500' as const,
-    lineHeight: 34,
+    lineHeight: 28,
   },
   // Compact data values in rows
   dataValue: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '500' as const,
-    lineHeight: 22,
+    lineHeight: 20,
   },
 
   // ── TEXT STYLES (SF Pro Text) ──
@@ -122,10 +122,10 @@ export const typography = {
 };
 
 export const borderRadius = {
-  sm: 8,       // Small elements (bumped +2)
-  md: 14,      // Cards (bumped +2 for premium feel)
-  lg: 18,      // Main cards (bumped +2)
-  xl: 24,      // Pills, large buttons
+  sm: 6,       // Small elements (buttons)
+  md: 10,      // Sub-cards
+  lg: 12,      // Main cards (compact, not bubbly)
+  xl: 20,      // Pills, large buttons
   full: 9999,  // Circular
 };
 
@@ -223,13 +223,13 @@ export const glass = {
   },
 };
 
-// Card shadow for subtle depth (premium hardware feel)
+// Card shadow - very subtle depth
 export const cardShadow = {
   shadowColor: '#000000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.3,
-  shadowRadius: 8,
-  elevation: 6,
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 3,
 };
 
 // Card gradient colors (top-to-bottom for depth)
@@ -241,11 +241,11 @@ export const cardGradient = {
 
 // Component style presets
 export const components = {
-  // Standard card with depth
+  // Standard card - compact
   card: {
     borderRadius: borderRadius.lg,
-    padding: spacing.lg, // Increased from md for breathing room
-    marginBottom: spacing.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
     ...cardShadow,
