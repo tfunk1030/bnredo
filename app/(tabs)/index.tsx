@@ -6,11 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-// LinearGradient removed — was tinting cards green
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import { Minus, Plus, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography, touchTargets, glass, cardShadow, cardGradient } from '@/src/constants/theme';
+import { BackgroundGradient } from '@/src/components/ui';
 import { WeatherCard } from '@/src/components/WeatherCard';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useClubBag } from '@/src/contexts/ClubBagContext';
@@ -85,8 +86,7 @@ export default function ShotScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Green gradient overlay removed — was tinting cards green */}
+    <BackgroundGradient style={{ paddingTop: insets.top }}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -94,7 +94,12 @@ export default function ShotScreen() {
       >
         <WeatherCard />
 
-        <View style={styles.yardageSection}>
+        <LinearGradient
+          colors={cardGradient.colors}
+          start={cardGradient.start}
+          end={cardGradient.end}
+          style={styles.yardageSection}
+        >
           <Text style={styles.sectionLabel}>Target Distance</Text>
 
           <View style={styles.yardageDisplay}>
@@ -174,10 +179,15 @@ export default function ShotScreen() {
               <Text style={styles.adjustButtonText}>5</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </LinearGradient>
 
         {calculations && (
-          <View style={styles.resultSection}>
+          <LinearGradient
+            colors={cardGradient.colors}
+            start={cardGradient.start}
+            end={cardGradient.end}
+            style={styles.resultSection}
+          >
             <Text style={styles.playsLikeLabel}>Plays Like</Text>
             <Text style={styles.playsLikeValue}>
               {adjustedFormat?.value}
@@ -226,19 +236,14 @@ export default function ShotScreen() {
                 </View>
               </View>
             )}
-          </View>
+          </LinearGradient>
         )}
       </ScrollView>
-    </View>
+    </BackgroundGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  // gradientOverlay removed — was tinting cards green
   scrollView: {
     flex: 1,
   },
@@ -246,12 +251,12 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   yardageSection: {
-    backgroundColor: colors.surface,
+    // backgroundColor removed — using LinearGradient
     marginHorizontal: spacing.md,
     marginTop: spacing.sm,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
-    borderWidth: 1,
+    borderWidth: 0.5,  // RENDER FIX: thinner border
     borderColor: colors.border,
     ...cardShadow,
   },
@@ -318,12 +323,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   resultSection: {
-    backgroundColor: colors.surface,
+    // backgroundColor removed — using LinearGradient
     marginHorizontal: spacing.md,
     marginTop: spacing.sm,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
-    borderWidth: 1,
+    borderWidth: 0.5,  // RENDER FIX: thinner border
     borderColor: colors.border,
     ...cardShadow,
   },

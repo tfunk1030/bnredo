@@ -1,14 +1,24 @@
 export const colors = {
-  // Backgrounds - pure dark, no green tint
-  background: '#080808',       // Near-black (neutral, no green)
-  surface: '#161616',          // Card background (neutral charcoal)
-  surfaceBottom: '#131313',    // Card gradient end
+  // ── RENDER-TO-REALITY FIXES (Feb 8, 2026) ──
+  // Background - radial gradient for premium depth (not flat black)
+  background: '#0A0A0A',       // Near-black base (subtle depth vs cards)
+  backgroundRadialStart: '#1A1A1A', // Charcoal (top/center of radial gradient)
+  backgroundRadialEnd: '#000000',   // True black (edges)
+  
+  // Card surfaces - gradient for depth (not flat)
+  surface: '#1C1F24',          // Card gradient top (lighter)
+  surfaceBottom: '#15181D',    // Card gradient bottom (darker)
   surfaceElevated: '#222222',  // Elevated surfaces (buttons)
-  border: '#222222',           // Very subtle borders (barely visible)
+  border: '#2A2D30',           // Subtle borders (visible but calm)
   divider: '#2A2A2A',          // Section dividers
 
-  // Primary green - ACTIONS ONLY (Lock Target, Plays Like, Recommended Club)
-  primary: '#4B9E50',          // Muted golf green (not too bright)
+  // ── GREEN ACCENT (THE BIGGEST CULPRIT) ──
+  // PRIMARY: Vibrant neon lime with gradient (for renders/marketing)
+  primaryVibrant: '#39FF14',    // Electric lime (use with gradient)
+  primaryVibrantEnd: '#28CD41', // Gradient end point
+  
+  // MUTED: Natural golf green (for on-course night use)
+  primary: '#4B9E50',          // Muted leafy green (less eye strain)
   primaryDark: '#3D8B42',      // Darker for pressed states
   primaryLight: '#5AAF5E',     // Lighter for hover/focus
 
@@ -47,46 +57,48 @@ export const spacing = {
 
 export const typography = {
   // ── NUMBER STYLES (SF Pro Display) ──
+  // RENDER FIX: Shrunk 5-10% for denser "instrument panel" feel
+  
   // Hero yardage (148 yards) — the one bold thing on screen
   hero: {
-    fontSize: 42,
+    fontSize: 40,    // Was 42 → -5%
     fontWeight: '700' as const,
-    lineHeight: 48,
+    lineHeight: 46,  // Was 48
     letterSpacing: -1,
   },
   // Secondary distance (197 yds) / target distance
   largeNumber: {
-    fontSize: 32,
+    fontSize: 30,    // Was 32 → -6%
     fontWeight: '600' as const,
-    lineHeight: 38,
+    lineHeight: 36,  // Was 38
     letterSpacing: -0.5,
   },
   // Stat numbers (66°F, 22%, 7 mph, 1017)
   mediumNumber: {
-    fontSize: 22,
+    fontSize: 20,    // Was 22 → -9%
     fontWeight: '500' as const,
-    lineHeight: 28,
+    lineHeight: 26,  // Was 28
   },
   // Compact data values in rows
   dataValue: {
-    fontSize: 16,
+    fontSize: 15,    // Was 16 → -6%
     fontWeight: '500' as const,
-    lineHeight: 20,
+    lineHeight: 19,  // Was 20
   },
 
   // ── TEXT STYLES (SF Pro Text) ──
   // Section titles (Plays Like, Target Distance)
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 12,    // Was 13 → -8%
     fontWeight: '500' as const,
-    lineHeight: 18,
-    letterSpacing: 0.5, // Slight letter spacing per render rec
+    lineHeight: 17,  // Was 18
+    letterSpacing: 0.5,
   },
   // Data labels (Temp, Humidity, WNW)
   dataLabel: {
-    fontSize: 12,
+    fontSize: 11,    // Was 12 → -8%
     fontWeight: '400' as const,
-    lineHeight: 18,
+    lineHeight: 16,  // Was 18
   },
   // Legacy (keep for compatibility)
   largeTitle: {
@@ -191,22 +203,22 @@ export const animation = {
   },
 };
 
-// Glass/blur effect constants for iOS 18+ Liquid Glass
+// Glass/blur effect constants (RENDER FIX: glassmorphism depth)
 export const glass = {
-  // Blur intensities for BlurView fallback
+  // Blur intensities for BlurView
   blur: {
     light: 10,
     medium: 20,
     heavy: 40,
   },
-  // Background opacity for glass surfaces
+  // Background opacity for glass surfaces (RENDER FIX: translucency)
   backgroundOpacity: {
-    subtle: 0.1,
-    medium: 0.2,
-    strong: 0.4,
+    subtle: 0.85,   // Cards should be translucent, not opaque
+    medium: 0.75,   // More translucent for premium feel
+    strong: 0.65,   // Heavy translucency
   },
-  // Border opacity for glass edges
-  borderOpacity: 0.15,
+  // Border opacity for glass edges (RENDER FIX: edge lighting)
+  borderOpacity: 0.08,  // Very subtle white stroke (was 0.15, too strong)
   // Tint colors (applied over blur) - neutral, no green tint on surfaces
   tint: {
     dark: 'rgba(0, 0, 0, 0.6)',
@@ -223,20 +235,39 @@ export const glass = {
   },
 };
 
-// Card shadow - very subtle depth
+// Card shadow - premium depth (RENDER FIX: separation from background)
 export const cardShadow = {
   shadowColor: '#000000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  elevation: 3,
+  shadowOffset: { width: 0, height: 4 },  // Slightly more lift
+  shadowOpacity: 0.3,                      // Stronger shadow
+  shadowRadius: 8,                         // Softer edges
+  elevation: 5,                            // Android depth
 };
 
-// Card gradient colors (top-to-bottom for depth)
+// ── RENDER-TO-REALITY GRADIENTS ──
+
+// Background radial gradient (for premium depth vs flat black)
+export const backgroundGradient = {
+  // Use this for screen backgrounds
+  colors: [colors.backgroundRadialStart, colors.backgroundRadialEnd] as const,
+  // Radial from top center
+  start: { x: 0.5, y: 0 },
+  end: { x: 0.5, y: 1 },
+};
+
+// Card gradient (top-to-bottom for depth)
 export const cardGradient = {
   colors: [colors.surface, colors.surfaceBottom] as const,
   start: { x: 0, y: 0 },
   end: { x: 0, y: 1 },
+};
+
+// Primary button gradient (vibrant green with dimension)
+export const primaryButtonGradient = {
+  // THE FIX: Adds "pop" and shifts from "flat tool" → "premium app"
+  colors: [colors.primaryVibrant, colors.primaryVibrantEnd] as const,
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 1 }, // Diagonal gradient (135deg)
 };
 
 // Component style presets

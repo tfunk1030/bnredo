@@ -1,37 +1,106 @@
 # AICaddyPro Design System
 
 Based on reference app design (Feb 7, 2026)
+**Updated Feb 8, 2026** with render-vs-real color/style fixes
+
+---
+
+## 🎨 Color Differences: Render vs Reality
+
+### The Problem (Why Renders Look "Off")
+Renders look like **idealized concept art** — brighter, cleaner, more cinematic.  
+Real app looks **practical and field-tested** — muted, flatter, more utilitarian.
+
+Your brain flags this because it's sensitive to:
+1. **Accent color saturation** (neon vs natural)
+2. **Black levels** (soft gradient vs hard flat)
+3. **Spacing** (breathing room vs density)
+
+---
 
 ## Color Palette
 
 ### Background
 ```typescript
 background: {
-  primary: '#0A0A0A',      // Near-black base (subtle depth vs cards)
-  secondary: '#1C1E1F',    // Dark gray-green cards
+  // RENDER (concept art vibes):
+  // - Smooth charcoal gradient (#1A1A1A → #000000)
+  // - Soft cinematic feel
+  
+  // REAL APP (what we actually want):
+  primary: '#0A0A0A',      // Near-black base (NOT pure #000 - needs card depth)
+  
+  // For premium feel, add subtle radial gradient:
+  // radial-gradient(circle at top center, #1A1A1A 0%, #000000 100%)
+  
+  secondary: '#1C1E1F',    // Dark gray-green cards (needs gradient for depth)
   tertiary: '#2A2D2E',     // Elevated surfaces
+}
+```
+
+### Cards (The Depth Problem)
+```typescript
+// RENDER: Cards have glassmorphism - translucent, blurred, edge-lit
+// REAL APP: Solid opaque rectangles that blend in too much
+
+card: {
+  // Start with gradient instead of flat color:
+  background: 'linear-gradient(180deg, #1C1F24 0%, #15181D 100%)',
+  
+  // Add subtle border for "edge lighting":
+  borderWidth: 0.5,
+  borderColor: 'rgba(255, 255, 255, 0.08)',  // Very subtle white stroke
+  
+  // Optional: slight blur/translucency for glassmorphism
+  // (React Native: use @react-native-community/blur)
+  backdropFilter: 'blur(10px)',
+  backgroundColor: 'rgba(28, 31, 36, 0.85)',  // Translucent instead of opaque
 }
 ```
 
 ### Text
 ```typescript
 text: {
-  primary: '#FFFFFF',      // White - main text
+  primary: '#FFFFFF',      // White - main text (crank this to FULL white in renders)
   secondary: '#8E8E93',    // Gray - labels, metadata
   tertiary: '#636366',     // Darker gray - disabled
-  accent: '#4B9E50',       // Golf green - highlighted values
+  
+  // CRITICAL FIX:
+  accent: '#4B9E50',       // ❌ TOO MUTED for "pop"
+  // For render-quality vibrancy, use:
+  accentVibrant: '#39FF14', // Electric lime (with 80% opacity or gradient)
 }
 ```
 
-### Accent Colors
+### Accent Colors (THE BIGGEST CULPRIT)
 ```typescript
 accent: {
-  primary: '#4B9E50',      // Natural golf green (muted, not neon)
+  // RENDER GREEN (marketing green):
+  // - Bright, saturated, neon-ish (#39FF14 or #00FF00 variants)
+  // - Has subtle glow/gradient applied (especially "Lock Target" button)
+  // - Pops aggressively against dark background
+  
+  // REAL APP GREEN (what you currently have):
+  primary: '#4B9E50',      // Muted leafy green - LACKS luminance
+  // ^ This is a standard "Success Green" - no gradient, flat fill
+  
+  // THE FIX for vibrant UI:
+  primaryVibrant: '#39FF14',  // High-viz neon lime (reduce opacity to ~80% if too harsh)
+  
+  // For "Lock Target" button specifically:
+  buttonGradient: 'linear-gradient(135deg, #39FF14 0%, #28CD41 100%)',
+  // ^ Adds dimension via gradient
+  
   success: '#34C759',      // Green - confirmation
   warning: '#FF9500',      // Orange - alerts
   error: '#FF3B30',        // Red - errors
 }
 ```
+
+**Key Decision Point:**
+- Use `#4B9E50` (muted) for **real app practicality** (less eye-strain on course at night)
+- Use `#39FF14` (vibrant) for **renders/marketing** (pops in screenshots)
+- Or add gradient to muted green for best of both worlds
 
 ### UI Elements
 ```typescript
@@ -43,6 +112,18 @@ ui: {
 ```
 
 ## Typography
+
+### Render vs Real Differences
+**RENDER:** More spacing, bigger typography, breathing room → "design showcase"  
+**REAL APP:** Tighter layout, smaller text, compact info → "instrument panel"
+
+**Icon Weight:**
+- **Render:** Smoother, heavier icons
+- **Real App:** Thinner, sharper system-like icons (affects perceived "realness")
+
+**Contrast Tuning:**
+- **Render:** High-contrast, very legible, pleasing
+- **Real App:** Intentionally lower-contrast on some text/icons to avoid visual noise on course at night
 
 ### Font Family
 - **Primary:** System default (SF Pro on iOS, Roboto on Android)
@@ -300,5 +381,41 @@ import { theme } from '@/contexts/ThemeContext';
 
 ---
 
-**Last updated:** 2026-02-07
+## 🎯 Render-to-Reality Checklist
+
+To make **real app** match **render quality**:
+
+### Color Fixes
+- [ ] **Darken/desaturate green 10-20%** OR use vibrant green with gradient
+- [ ] **Add gradient to "Lock Target" button** (not flat fill)
+- [ ] **Use card gradients** (#1C1F24 → #15181D) instead of flat colors
+- [ ] **Add subtle border** to cards (0.5pt white @ 8% opacity for edge lighting)
+- [ ] **Background radial gradient** (charcoal → black) for premium depth
+
+### Depth Fixes
+- [ ] **Card glassmorphism:** translucency + blur (React Native Blur component)
+- [ ] **Increase true blacks** in background (but keep gradient)
+- [ ] **Add subtle shadows** to cards for separation
+
+### Typography/Layout Fixes
+- [ ] **Slightly tighten spacing** (renders are too spacious)
+- [ ] **Shrink typography 5-10%** for denser "instrument panel" feel
+- [ ] **Use thinner icon strokes** (system-like, not heavy)
+- [ ] **Lower contrast on non-critical text** (avoid visual noise)
+
+### The Quick Win
+If you only fix **one thing**: Add gradient to the green accent.
+```typescript
+// Instead of:
+backgroundColor: '#4B9E50'
+
+// Use:
+background: 'linear-gradient(135deg, #39FF14 0%, #28CD41 100%)'
+```
+This alone shifts it from "flat tool" → "premium app."
+
+---
+
+**Last updated:** 2026-02-08
 **Reference:** iPhone dark mode golf app design
+**Render feedback:** Taylor's color analysis (Feb 8)

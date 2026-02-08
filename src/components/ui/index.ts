@@ -1,3 +1,6 @@
+export { BackgroundGradient } from './BackgroundGradient';
+export type { BackgroundGradientProps } from './BackgroundGradient';
+
 export { GlassCard } from './GlassCard';
 export type { GlassCardProps } from './GlassCard';
 

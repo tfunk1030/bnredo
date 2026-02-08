@@ -55,8 +55,9 @@ export interface GradientButtonProps {
 }
 
 // Gradient color stops for each variant
+// RENDER FIX (Feb 8): Primary uses vibrant gradient for "pop"
 const gradientColors: Record<GradientButtonVariant, [string, string]> = {
-  primary: [colors.primaryLight, colors.primaryDark],
+  primary: [colors.primaryVibrant, colors.primaryVibrantEnd], // THE FIX: vibrant green gradient
   accent: [colors.accent, colors.accentDark],
   danger: [colors.error, '#c41e3a'],
   muted: [colors.surfaceElevated, colors.surface],
