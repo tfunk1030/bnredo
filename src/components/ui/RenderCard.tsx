@@ -36,22 +36,23 @@ export function RenderCard({
   testID,
 }: RenderCardProps) {
   // Wrapper A: Ambient shadow (soft, large spread)
+  // iOS CRITICAL: backgroundColor needed for shadows to render!
   const ambientShadowStyle: ViewStyle = noShadow
     ? {}
     : {
         ...shadows.ambient,
-        // Don't clip shadows!
-        overflow: undefined,
+        backgroundColor: 'transparent', // Required for iOS shadows
+        borderRadius: radii.card,
       };
 
   // Wrapper B: Contact shadow (sharp, tight to surface)
+  // iOS CRITICAL: backgroundColor needed for shadows to render!
   const contactShadowStyle: ViewStyle = noShadow
     ? {}
     : {
         ...shadows.contact,
+        backgroundColor: 'transparent', // Required for iOS shadows
         borderRadius: radii.card,
-        // Don't clip shadows!
-        overflow: undefined,
       };
 
   // Surface layer: gradient + strokes + clipping
