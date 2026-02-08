@@ -6,11 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
-import { Minus, Plus, ChevronDown, ChevronUp } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography, touchTargets, glass, cardShadow, cardGradient } from '@/src/constants/theme';
+import { ChevronLeft, ChevronDown, ChevronUp, Target } from 'lucide-react-native';
+import { colors, spacing, borderRadius, typography, touchTargets, cardShadow } from '@/src/constants/theme';
 import { WeatherCard } from '@/src/components/WeatherCard';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useClubBag } from '@/src/contexts/ClubBagContext';
@@ -25,7 +24,8 @@ export default function ShotScreen() {
   const { getRecommendedClub } = useClubBag();
   const { preferences } = useUserPreferences();
 
-  const [targetYardage, setTargetYardage] = React.useState(150);
+  const [targetYardage, setTargetYardage] = React.useState(197);
+  const [isLocked, setIsLocked] = React.useState(false);
   const [showBreakdown, setShowBreakdown] = React.useState(false);
 
   // Haptic feedback for slider every 5 yards
@@ -34,34 +34,26 @@ export default function ShotScreen() {
   const calculations = React.useMemo(() => {
     if (!weather) return null;
 
-    // Use YardageModelEnhanced for environmental calculations (same as wind calculator)
     const yardageModel = new YardageModelEnhanced();
     yardageModel.setBallModel('tour_premium');
     
-    // Set conditions with NO wind (shot calculator doesn't include wind)
     yardageModel.setConditions(
       weather.temperature,
       weather.altitude,
-      0, // No wind
-      0, // No wind direction
+      0, // No wind (shot calculator doesn't include wind)
+      0,
       weather.pressure,
       weather.humidity
     );
 
-    // Use 7-iron as reference club (environmental factor doesn't depend on club choice)
     const envResult = yardageModel.calculateAdjustedYardage(
       targetYardage,
       SkillLevel.PROFESSIONAL,
       '7-iron'
     );
 
-    // Calculate environmental effect in yards (negative = plays shorter/ball goes farther, positive = plays longer/ball falls short)
     const envEffectYards = -(envResult.carryDistance - targetYardage);
-    
-    // Convert to percentage for display
     const totalAdjustmentPercent = (envEffectYards / targetYardage) * 100;
-    
-    // Adjusted yardage is the "plays like" distance
     const adjustedYardage = Math.round(targetYardage + envEffectYards);
 
     return {
@@ -75,52 +67,119 @@ export default function ShotScreen() {
     return getRecommendedClub(calculations.adjustedYardage);
   }, [calculations, getRecommendedClub]);
 
-  // Format distances based on user preferences
   const targetFormat = formatDistance(targetYardage, preferences.distanceUnit);
   const adjustedFormat = calculations ? formatDistance(calculations.adjustedYardage, preferences.distanceUnit) : null;
-  const clubDistanceFormat = recommendedClub ? formatDistance(recommendedClub.customDistance, preferences.distanceUnit) : null;
 
   const handleIncrement = (amount: number) => {
+    if (isLocked) return;
     setTargetYardage(prev => Math.min(350, Math.max(50, prev + amount)));
   };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <LinearGradient
-        colors={['rgba(75, 158, 80, 0.08)', 'transparent']}
-        style={styles.gradientOverlay}
-        pointerEvents="none"
-      />
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} accessibilityLabel="Back">
+          <ChevronLeft color={colors.primary} size={24} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Shot</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Weather Card */}
         <WeatherCard />
 
-        <View style={styles.yardageSection}>
-          <Text style={styles.sectionLabel}>Target Distance</Text>
+        {/* Plays Like Card — Hero metric */}
+        {calculations && (
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>Plays Like</Text>
+            <View style={styles.heroRow}>
+              <Text style={styles.heroValue}>{adjustedFormat?.value}</Text>
+              <Text style={styles.heroUnit}>{adjustedFormat?.label}</Text>
+            </View>
 
-          <View style={styles.yardageDisplay}>
-            <Text style={styles.yardageValue}>{targetFormat.value}</Text>
-            <Text style={styles.yardageUnit}>{targetFormat.label}</Text>
-          </View>
-
-          <View style={styles.sliderContainer}>
+            {/* Plays Like slider */}
             <Slider
               style={styles.slider}
               minimumValue={50}
               maximumValue={350}
               step={1}
+              value={calculations.adjustedYardage}
+              disabled={true}
+              minimumTrackTintColor={colors.primary}
+              maximumTrackTintColor={colors.border}
+              thumbTintColor={colors.primary}
+              accessibilityLabel={`Plays like: ${adjustedFormat?.value} ${adjustedFormat?.label}`}
+            />
+            <View style={styles.sliderLabels}>
+              <Text style={styles.sliderLabelText}>50</Text>
+              <Text style={styles.sliderLabelText}>350</Text>
+            </View>
+
+            {/* Increment buttons */}
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.incrementBtn}
+                onPress={() => handleIncrement(-5)}
+                accessibilityLabel="Decrease by 5"
+              >
+                <Text style={styles.incrementBtnText}>− 5</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.incrementBtn}
+                onPress={() => handleIncrement(-1)}
+                accessibilityLabel="Decrease by 1"
+              >
+                <Text style={styles.incrementBtnText}>− 1</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.incrementBtn}
+                onPress={() => handleIncrement(1)}
+                accessibilityLabel="Increase by 1"
+              >
+                <Text style={styles.incrementBtnText}>+ 1</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.incrementBtn}
+                onPress={() => handleIncrement(5)}
+                accessibilityLabel="Increase by 5"
+              >
+                <Text style={styles.incrementBtnText}>+ 5</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Target Distance Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>Target Distance</Text>
+          <View style={styles.heroRow}>
+            <Text style={styles.targetValue}>{targetFormat.value}</Text>
+            <Text style={styles.targetUnit}>{targetFormat.label}</Text>
+          </View>
+
+          {/* Target slider */}
+          <View style={styles.targetSliderRow}>
+            <Slider
+              style={styles.targetSlider}
+              minimumValue={50}
+              maximumValue={350}
+              step={1}
               value={targetYardage}
+              disabled={isLocked}
               onValueChange={(value) => {
                 onSliderHaptic(value);
                 setTargetYardage(value);
               }}
               onSlidingComplete={resetSliderHaptic}
-              minimumTrackTintColor={colors.primary}
+              minimumTrackTintColor={isLocked ? colors.textMuted : colors.primary}
               maximumTrackTintColor={colors.border}
-              thumbTintColor={colors.primary}
+              thumbTintColor={isLocked ? colors.textMuted : colors.primary}
               accessibilityLabel={`Target distance: ${targetFormat.value} ${targetFormat.label}`}
               accessibilityRole="adjustable"
               accessibilityValue={{
@@ -130,104 +189,60 @@ export default function ShotScreen() {
                 text: `${targetFormat.value} ${targetFormat.label}`,
               }}
             />
-            <View style={styles.sliderLabels}>
-              <Text style={styles.sliderLabel}>50</Text>
-              <Text style={styles.sliderLabel}>350</Text>
-            </View>
+          </View>
+          <View style={styles.sliderLabels}>
+            <Text style={styles.sliderLabelText}>50</Text>
+            <Text style={styles.sliderLabelText}>350</Text>
           </View>
 
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.adjustButton}
-              onPress={() => handleIncrement(-5)}
-              accessibilityRole="button"
-              accessibilityLabel="Decrease distance by 5 yards"
-              accessibilityHint="Double tap to subtract 5 yards from target distance"
-            >
-              <Minus color={colors.text} size={20} />
-              <Text style={styles.adjustButtonText}>5</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.adjustButton}
-              onPress={() => handleIncrement(-1)}
-              accessibilityRole="button"
-              accessibilityLabel="Decrease distance by 1 yard"
-              accessibilityHint="Double tap to subtract 1 yard from target distance"
-            >
-              <Minus color={colors.text} size={20} />
-              <Text style={styles.adjustButtonText}>1</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.adjustButton}
-              onPress={() => handleIncrement(1)}
-              accessibilityRole="button"
-              accessibilityLabel="Increase distance by 1 yard"
-              accessibilityHint="Double tap to add 1 yard to target distance"
-            >
-              <Plus color={colors.text} size={20} />
-              <Text style={styles.adjustButtonText}>1</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.adjustButton}
-              onPress={() => handleIncrement(5)}
-              accessibilityRole="button"
-              accessibilityLabel="Increase distance by 5 yards"
-              accessibilityHint="Double tap to add 5 yards to target distance"
-            >
-              <Plus color={colors.text} size={20} />
-              <Text style={styles.adjustButtonText}>5</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Lock Target button */}
+          <TouchableOpacity
+            style={[styles.lockButton, isLocked && styles.lockButtonActive]}
+            onPress={() => setIsLocked(!isLocked)}
+            accessibilityLabel={isLocked ? 'Unlock target' : 'Lock target'}
+            accessibilityRole="button"
+          >
+            <Target color={colors.white} size={16} strokeWidth={1.5} />
+            <Text style={styles.lockButtonText}>
+              {isLocked ? 'Unlock Target' : 'Lock Target'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
+        {/* Breakdown (collapsible) */}
         {calculations && (
-          <View style={styles.resultSection}>
-            <Text style={styles.playsLikeLabel}>Plays Like</Text>
-            <Text style={styles.playsLikeValue}>
-              {adjustedFormat?.value}
-              <Text style={styles.playsLikeUnit}> {adjustedFormat?.label}</Text>
+          <TouchableOpacity
+            style={styles.breakdownToggle}
+            onPress={() => setShowBreakdown(!showBreakdown)}
+            accessibilityLabel={`${showBreakdown ? 'Hide' : 'Show'} breakdown`}
+            accessibilityState={{ expanded: showBreakdown }}
+          >
+            <Text style={styles.breakdownToggleText}>
+              {showBreakdown ? 'Hide' : 'Show'} Breakdown
             </Text>
-
-            {recommendedClub && (
-              <View style={styles.clubRecommendation}>
-                <Text style={styles.clubLabel}>Recommended Club</Text>
-                <Text style={styles.clubName}>{recommendedClub.name}</Text>
-                <Text style={styles.clubDistance}>
-                  ({clubDistanceFormat?.value} {clubDistanceFormat?.shortLabel} club)
-                </Text>
-              </View>
+            {showBreakdown ? (
+              <ChevronUp color={colors.textSecondary} size={16} />
+            ) : (
+              <ChevronDown color={colors.textSecondary} size={16} />
             )}
+          </TouchableOpacity>
+        )}
 
-            <TouchableOpacity
-              style={styles.breakdownToggle}
-              onPress={() => setShowBreakdown(!showBreakdown)}
-              accessibilityRole="button"
-              accessibilityLabel={`${showBreakdown ? 'Hide' : 'Show'} calculation breakdown`}
-              accessibilityState={{ expanded: showBreakdown }}
-              accessibilityHint="Double tap to toggle breakdown details"
-            >
-              <Text style={styles.breakdownToggleText}>
-                {showBreakdown ? 'Hide' : 'Show'} Breakdown
+        {showBreakdown && calculations && (
+          <View style={styles.breakdownCard}>
+            <View style={styles.breakdownRow}>
+              <Text style={styles.breakdownLabel}>Environmental Effect</Text>
+              <Text style={styles.breakdownValue}>
+                {calculations.totalAdjustmentPercent > 0 ? '+' : ''}
+                {calculations.totalAdjustmentPercent.toFixed(1)}%
               </Text>
-              {showBreakdown ? (
-                <ChevronUp color={colors.textSecondary} size={16} />
-              ) : (
-                <ChevronDown color={colors.textSecondary} size={16} />
-              )}
-            </TouchableOpacity>
-
-            {showBreakdown && (
-              <View style={styles.breakdown}>
-                <View style={styles.breakdownRow}>
-                  <Text style={styles.breakdownLabel}>Environmental Effect</Text>
-                  <Text style={styles.breakdownSubtext}>
-                    (includes air density and altitude)
-                  </Text>
-                  <Text style={styles.breakdownValue}>
-                    {calculations.totalAdjustmentPercent > 0 ? '+' : ''}
-                    {calculations.totalAdjustmentPercent.toFixed(1)}%
-                  </Text>
-                </View>
+            </View>
+            {recommendedClub && (
+              <View style={[styles.breakdownRow, styles.breakdownRowLast]}>
+                <Text style={styles.breakdownLabel}>Recommended Club</Text>
+                <Text style={[styles.breakdownValue, { color: colors.primary }]}>
+                  {recommendedClub.name}
+                </Text>
               </View>
             )}
           </View>
@@ -242,191 +257,193 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-    zIndex: 0,
+
+  // ── Header ──
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
   },
+  backButton: {
+    padding: spacing.xs,
+  },
+  headerTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: spacing.xs,
+  },
+  headerSpacer: {
+    flex: 1,
+  },
+
+  // ── Scroll ──
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingBottom: spacing.xxl,
+    gap: 12,
   },
-  yardageSection: {
+
+  // ── Card (shared) ──
+  card: {
     backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
-    marginTop: spacing.md,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
     ...cardShadow,
   },
-  sectionLabel: {
-    ...typography.sectionTitle,
+  cardLabel: {
     color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '400',
     textAlign: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
-  yardageDisplay: {
+
+  // ── Hero metric (Plays Like) ──
+  heroRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: 8,
   },
-  yardageValue: {
-    ...typography.largeTitle,
-    color: colors.text,
+  heroValue: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: -1,
   },
-  yardageUnit: {
-    color: colors.textMuted,
+  heroUnit: {
     fontSize: 18,
     fontWeight: '400',
-    marginLeft: spacing.xs,
+    color: colors.textSecondary,
+    marginLeft: 6,
   },
-  sliderContainer: {
-    marginBottom: spacing.sm, // Tighter: slider + buttons are related
+
+  // ── Target Distance ──
+  targetValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: -0.5,
   },
+  targetUnit: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: colors.textSecondary,
+    marginLeft: 6,
+  },
+
+  // ── Sliders ──
   slider: {
     width: '100%',
-    height: 40,
+    height: 36,
+  },
+  targetSliderRow: {
+    marginTop: 4,
+  },
+  targetSlider: {
+    width: '100%',
+    height: 36,
   },
   sliderLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.xs,
-    marginBottom: spacing.sm,
+    paddingHorizontal: 2,
+    marginBottom: 12,
   },
-  sliderLabel: {
+  sliderLabelText: {
     color: colors.textMuted,
     fontSize: 11,
   },
+
+  // ── Increment buttons ──
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: spacing.sm, // Tighter gap between buttons
+    gap: 8,
   },
-  adjustButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  incrementBtn: {
     backgroundColor: colors.surfaceElevated,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
     borderRadius: borderRadius.sm,
-    gap: 4,
-    minWidth: 64,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    minWidth: 60,
     minHeight: touchTargets.minimum,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  adjustButtonText: {
+  incrementBtnText: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '400', // Regular weight (only hero = bold)
+    fontSize: 15,
+    fontWeight: '500',
   },
-  resultSection: {
-    backgroundColor: colors.surface,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.md,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...cardShadow,
-  },
-  playsLikeLabel: {
-    ...typography.sectionTitle,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  playsLikeValue: {
-    ...typography.hero,
-    color: colors.primary, // Green for ACTION — this is the hero metric
-    textAlign: 'center',
-  },
-  playsLikeUnit: {
-    fontSize: 20,
-    fontWeight: '400',
-    color: colors.textMuted,
-  },
-  clubRecommendation: {
+
+  // ── Lock Target button ──
+  lockButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    justifyContent: 'center',
+    alignSelf: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    gap: 8,
+    minHeight: touchTargets.minimum,
   },
-  clubLabel: {
-    ...typography.dataLabel,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
+  lockButtonActive: {
+    backgroundColor: colors.primaryDark,
   },
-  clubName: {
-    color: colors.primary, // Green for ACTION — recommended club
-    fontSize: 24,
-    fontWeight: '700',
+  lockButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '600',
   },
-  clubDistance: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: '400',
-    marginTop: 4,
-  },
+
+  // ── Breakdown ──
   breakdownToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.lg,
+    paddingVertical: spacing.sm,
     gap: spacing.xs,
   },
   breakdownToggleText: {
     color: colors.textSecondary,
     fontSize: 13,
   },
-  breakdown: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  breakdownCard: {
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  breakdownRowLast: {
+    borderBottomWidth: 0,
   },
   breakdownLabel: {
     color: colors.textSecondary,
     fontSize: 14,
   },
-  breakdownSubtext: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontStyle: 'italic',
-    marginTop: 2,
-  },
   breakdownValue: {
     color: colors.text,
     fontSize: 14,
     fontWeight: '500',
-  },
-  breakdownTotal: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  breakdownTotalLabel: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  breakdownTotalValue: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
   },
 });
