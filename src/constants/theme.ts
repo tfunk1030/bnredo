@@ -1,14 +1,14 @@
 export const colors = {
-  // Backgrounds - Near-black with subtle depth
-  background: '#0A0A0A',       // Near-black base
-  surface: '#1C1F24',          // Card top (gradient start)
-  surfaceBottom: '#15181D',    // Card bottom (gradient end)
-  surfaceElevated: '#2A2D2E',  // Elevated surfaces
-  border: '#2A2D30',           // Subtle borders
+  // Backgrounds - near-black, neutral (no green tint)
+  background: '#0A0E0A',       // Near-black with very slight cool tint
+  surface: '#1A1E1A',          // Card background (neutral dark)
+  surfaceBottom: '#15181D',    // Card gradient end
+  surfaceElevated: '#252825',  // Elevated surfaces (buttons)
+  border: '#2A2F2A',           // Subtle borders (very low contrast)
   divider: '#333636',          // Section dividers
 
   // Primary green - ACTIONS ONLY (Lock Target, Plays Like, Recommended Club)
-  primary: '#4B9E50',          // Natural golf green - actionable items
+  primary: '#4CAF50',          // Golf green (matched to reference)
   primaryDark: '#3D8B42',      // Darker for pressed states
   primaryLight: '#5CB860',     // Lighter for hover/focus
 
@@ -17,14 +17,14 @@ export const colors = {
   greenSubtle: '#2D5E30',      // Very subtle green for backgrounds/tints
 
   // Legacy accent (kept for compatibility)
-  accent: '#4B9E50',
+  accent: '#4CAF50',
   accentDark: '#3D8B42',
 
-  // Text - improved contrast for outdoor legibility
-  text: '#FFFFFF',             // White - primary content
-  textSecondary: '#9A9AA0',    // Brighter gray - labels (improved contrast)
-  textMuted: '#6E6E76',        // Medium gray - metadata
-  textAccent: '#4B9E50',       // Golf green - highlighted values
+  // Text - matched to reference
+  text: '#EAEAEA',             // Near-white (not pure white)
+  textSecondary: '#8A8F8A',    // Medium gray - section labels
+  textMuted: '#6B6F6B',        // Dimmer gray - metadata/sublabels
+  textAccent: '#4CAF50',       // Golf green - highlighted values
 
   // Feedback colors
   success: '#34C759',
@@ -207,19 +207,19 @@ export const glass = {
   },
   // Border opacity for glass edges
   borderOpacity: 0.15,
-  // Tint colors (applied over blur) - Muted golf green
+  // Tint colors (applied over blur) - neutral, no green tint on surfaces
   tint: {
     dark: 'rgba(0, 0, 0, 0.6)',
-    light: 'rgba(255, 255, 255, 0.1)',
-    accent: 'rgba(75, 158, 80, 0.15)',     // golf green with transparency
-    primary: 'rgba(75, 158, 80, 0.12)',    // golf green primary
-    accentStrong: 'rgba(75, 158, 80, 0.2)', // stronger green for active states
+    light: 'rgba(255, 255, 255, 0.08)',
+    accent: 'rgba(76, 175, 80, 0.12)',
+    primary: 'rgba(76, 175, 80, 0.10)',
+    accentStrong: 'rgba(76, 175, 80, 0.18)',
   },
-  // Card background tints (more subtle, for surface overlays)
+  // Card background tints (very subtle)
   cardTint: {
-    success: 'rgba(52, 199, 89, 0.06)',    // subtle green for result cards
-    premium: 'rgba(75, 158, 80, 0.08)',    // subtle green for premium sections
-    premiumActive: 'rgba(75, 158, 80, 0.12)', // stronger green when premium is active
+    success: 'rgba(52, 199, 89, 0.04)',
+    premium: 'rgba(76, 175, 80, 0.06)',
+    premiumActive: 'rgba(76, 175, 80, 0.10)',
   },
 };
 

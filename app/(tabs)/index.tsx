@@ -6,7 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+// LinearGradient removed — was tinting cards green
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import { Minus, Plus, ChevronDown, ChevronUp } from 'lucide-react-native';
@@ -86,11 +86,7 @@ export default function ShotScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <LinearGradient
-        colors={['rgba(75, 158, 80, 0.08)', 'transparent']}
-        style={styles.gradientOverlay}
-        pointerEvents="none"
-      />
+      {/* Green gradient overlay removed — was tinting cards green */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -242,14 +238,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-    zIndex: 0,
-  },
+  // gradientOverlay removed — was tinting cards green
   scrollView: {
     flex: 1,
   },
