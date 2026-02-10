@@ -11,7 +11,7 @@ import { colors, hitSlop } from '@/src/constants/theme';
 import { RenderCard } from '@/src/components/ui';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
-import { getWindDirectionLabel } from '@/src/services/weather-service';
+import { getWindDirectionLabel } from '@/src/services/weather';
 import { formatTemperature, formatWindSpeed, formatAltitude } from '@/src/utils/unit-conversions';
 
 export const WeatherCard = React.memo(function WeatherCard() {

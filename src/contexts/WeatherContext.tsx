@@ -81,6 +81,7 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isOffline, setIsOffline] = React.useState(false);
+  const lastLocationRef = React.useRef<{ lat: number; lng: number } | null>(null);
 
   // Build settings from user preferences
   const weatherSettings: WeatherSettings = React.useMemo(() => ({
@@ -135,6 +136,33 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
+
+      // Check if location changed significantly (>5km) to avoid unnecessary fetches
+      const lastLoc = lastLocationRef.current;
+      if (lastLoc && weather && !weather.isManualOverride) {
+        const { getDistanceKm } = await import('@/src/services/weather');
+        const distance = getDistanceKm(
+          lastLoc.lat,
+          lastLoc.lng,
+          location.coords.latitude,
+          location.coords.longitude
+        );
+        
+        // If location hasn't changed much and weather is recent, skip fetch
+        if (distance < 5) {
+          const age = Date.now() - new Date(weather.observationTime).getTime();
+          if (age < 5 * 60 * 1000) { // 5 minutes
+            setIsLoading(false);
+            return;
+          }
+        }
+      }
+
+      // Update location tracking
+      lastLocationRef.current = {
+        lat: location.coords.latitude,
+        lng: location.coords.longitude,
+      };
 
       // Fetch weather using orchestrator
       const weatherData = await fetchWeatherOrchestrated(
