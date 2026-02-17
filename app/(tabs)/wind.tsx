@@ -19,7 +19,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, borderRadius, typography, touchTargets, glass } from '@/src/constants/theme';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
-import { getWindDirectionLabel } from '@/src/services/weather-service';
+import { getWindDirectionLabel } from '@/src/services/weather/utils';
 import { WindResultsModal } from '@/src/components/WindResultsModal';
 import { CompassDisplay } from '@/src/components/CompassDisplay';
 import { useCompassHeading } from '@/src/hooks/useCompassHeading';
