@@ -109,7 +109,9 @@ export class EnvironmentalCalculator {
     }
 
     if (conditions.humidity > 80) {
-      recommendations.push("High humidity: Ball will fly slightly shorter");
+      // Note: Humid air is LESS dense than dry air (water vapor < dry air molecular weight),
+      // so the ball actually flies slightly FURTHER in high humidity. Effect is very small (<1 yard).
+      recommendations.push("High humidity: Ball may fly very slightly further (humid air is less dense)");
     }
 
     if (conditions.altitude > 3000) {
