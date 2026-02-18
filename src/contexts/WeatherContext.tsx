@@ -9,6 +9,7 @@ import {
   fetchWeather as fetchWeatherOrchestrated,
   getCachedWeather as getOrchCachedWeather,
   WeatherError,
+  getDistanceKm,
 } from '@/src/services/weather';
 
 // Re-export the old interface for backward compatibility
@@ -91,11 +92,7 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
     fallbackOrder: preferences.weatherProvider?.fallbackOrder ?? ['tomorrow', 'openmeteo'],
   }), [preferences.weatherProvider]);
 
-  React.useEffect(() => {
-    loadWeather();
-  }, [weatherSettings.enableMultiProvider]);
-
-  const loadWeather = async () => {
+  const loadWeather = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -140,7 +137,6 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
       // Check if location changed significantly (>5km) to avoid unnecessary fetches
       const lastLoc = lastLocationRef.current;
       if (lastLoc && weather && !weather.isManualOverride) {
-        const { getDistanceKm } = await import('@/src/services/weather');
         const distance = getDistanceKm(
           lastLoc.lat,
           lastLoc.lng,
@@ -197,12 +193,16 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [weather, weatherSettings]);
+
+  React.useEffect(() => {
+    loadWeather();
+  }, [loadWeather]);
 
   const refreshWeather = React.useCallback(async () => {
     await AsyncStorage.removeItem(MANUAL_OVERRIDE_KEY);
     await loadWeather();
-  }, []);
+  }, [loadWeather]);
 
   const updateManualWeather = React.useCallback(async (updates: Partial<WeatherData>) => {
     const newWeather: WeatherData = {
