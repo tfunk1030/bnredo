@@ -414,6 +414,11 @@ export class YardageModelEnhanced {
     };
   }
 
+  // TODO: _calculate_spin_decay is currently unused — spin decay is not yet
+  // integrated into calculateAdjustedYardage. The method computes the correct
+  // exponential decay but its result is never fed back into _calculate_wind_effects
+  // (which still uses clubData.spin_rate directly). Integrating this would
+  // require passing decayed spin into the gyro_stability calculation.
   private _calculate_spin_decay(spin_rate: number, flight_time: number, ball_speed: number): number {
     const decay_rate = 0.12;
     const speed_factor = ball_speed / 123;
@@ -455,12 +460,17 @@ export class YardageModelEnhanced {
     pressure: number,
     humidity: number
   ): void {
-    this._validate_wind_inputs(wind_speed, wind_direction);
+    // Normalize 360° → 0° so compass readings of exactly North (360) don't
+    // trigger the validation error in _validate_wind_inputs. The modulo keeps
+    // the value in [0, 360) without changing any other valid input.
+    const normalizedDirection = wind_direction % 360;
+
+    this._validate_wind_inputs(wind_speed, normalizedDirection);
 
     this.temperature = temperature;
     this.altitude = altitude;
     this.windSpeed = wind_speed;
-    this.windDirection = wind_direction;
+    this.windDirection = normalizedDirection;
     this.pressure = pressure;
     this.humidity = humidity;
   }
