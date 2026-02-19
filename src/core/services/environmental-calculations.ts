@@ -1,3 +1,5 @@
+import { calculateAirDensity as calculateAirDensityPhysics } from '@/src/core/physics/air-density';
+
 export interface Location {
   lat: number;
   lng: number;
@@ -30,13 +32,15 @@ export class EnvironmentalCalculator {
   private static readonly STANDARD_PRESSURE = 1013.25;
   private static readonly STANDARD_DENSITY = 1.225;
 
+  /**
+   * Calculate air density — delegates to core/physics/air-density.ts (single source of truth).
+   */
   static calculateAirDensity(conditions: Partial<EnvironmentalConditions>): number {
-    const tempC = (conditions.temperature! - 32) * 5/9;
-    const vaporPressure = this.calculateVaporPressure(conditions.temperature!, conditions.humidity!);
-    const dryPressure = conditions.pressure! - vaporPressure;
-
-    return (dryPressure * 100) / (287.05 * (tempC + 273.15)) +
-           (vaporPressure * 100) / (461.495 * (tempC + 273.15));
+    return calculateAirDensityPhysics(
+      conditions.temperature!,
+      conditions.pressure!,
+      conditions.humidity!
+    );
   }
 
   // WMO-recommended Magnus constants for saturation vapor pressure

@@ -1,4 +1,5 @@
 import { normalizeClubName } from '@/src/features/settings/utils/club-mapping';
+import { calculateAirDensity as calculateAirDensityPhysics } from '@/src/core/physics/air-density';
 
 export enum SkillLevel {
   BEGINNER = "beginner",
@@ -48,11 +49,8 @@ export class YardageModelEnhanced {
   private static readonly DENSITY_EXPONENT_SEA: number = 0.7; // Tuned for viscosity compensation
   private static readonly DENSITY_EXPONENT_ALT: number = 0.5;
   private static readonly ALTITUDE_THRESHOLD: number = 3000;
-  private static readonly MAGNUS_A = 6.1121;
-  private static readonly MAGNUS_B = 17.502;
-  private static readonly MAGNUS_C = 240.97;
-  private static readonly GAS_CONSTANT_DRY = 287.058;
-  private static readonly GAS_CONSTANT_VAPOR = 461.495;
+  // REMOVED: MAGNUS_A, MAGNUS_B, MAGNUS_C, GAS_CONSTANT_DRY, GAS_CONSTANT_VAPOR
+  // Air density calculation now delegates to core/physics/air-density.ts (single source of truth)
 
   // Club database with refined wind sensitivity coefficients
   private static readonly CLUB_DATABASE: Readonly<Record<string, ClubData>> = {
@@ -238,38 +236,11 @@ export class YardageModelEnhanced {
   }
 
   /**
-   * Calculate air density from temperature, pressure, and humidity.
-   *
-   * IMPORTANT: This function expects STATION PRESSURE (actual local pressure
-   * at the measurement location), not MSL (mean sea level) pressure.
-   *
-   * Station pressure naturally decreases with altitude (~12 hPa per 100m),
-   * so altitude effects on ball flight are automatically incorporated when
-   * using station pressure. No separate altitude adjustment is needed.
-   *
-   * Weather APIs used:
-   * - Open-Meteo: `surface_pressure` (station pressure) ✓
-   * - Tomorrow.io: `pressureSurfaceLevel` (station pressure) ✓
-   *
-   * If using MSL pressure, you must convert to station pressure first:
-   * P_station = P_msl × exp(-g×M×h / (R×T))
-   *
-   * @param tempF Temperature in Fahrenheit
-   * @param pressureMb Pressure in millibars (hPa) - MUST be station pressure
-   * @param humidity Relative humidity (0-100%)
-   * @returns Air density in kg/m³
+   * Calculate air density — delegates to core/physics/air-density.ts (single source of truth).
+   * See that module for full documentation on station pressure requirements.
    */
   private calculateAirDensity(tempF: number, pressureMb: number, humidity: number): number {
-    const tempC = (tempF - 32) * 5/9;
-    const pressurePa = pressureMb * 100;
-
-    const svp = YardageModelEnhanced.MAGNUS_A * Math.exp(
-      (YardageModelEnhanced.MAGNUS_B * tempC) / (tempC + YardageModelEnhanced.MAGNUS_C)
-    );
-    const vaporPressure = (humidity / 100) * svp;
-
-    return (pressurePa - vaporPressure * 100) / (YardageModelEnhanced.GAS_CONSTANT_DRY * (tempC + 273.15)) +
-           vaporPressure * 100 / (YardageModelEnhanced.GAS_CONSTANT_VAPOR * (tempC + 273.15));
+    return calculateAirDensityPhysics(tempF, pressureMb, humidity);
   }
 
   calculateAdjustedYardage(targetYardage: number, skillLevel: SkillLevel, club: string): ShotResult {
