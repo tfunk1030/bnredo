@@ -10,6 +10,7 @@ import {
   AccessibilityInfo,
   TextInput,
   Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
@@ -17,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Lock, Wind, Navigation, Target, Minus, Plus, AlertCircle, Edit3, Check, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, borderRadius, typography, touchTargets, glass } from '@/src/constants/theme';
+import { SceneBackground } from '@/src/components/ui';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
 import { getWindDirectionLabel } from '@/src/services/weather/utils';
@@ -182,12 +184,7 @@ export default function WindScreen() {
 
   if (!preferences.isPremium) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <LinearGradient
-          colors={['rgba(35, 134, 54, 0.08)', 'transparent']}
-          style={styles.gradientOverlay}
-          pointerEvents="none"
-        />
+      <SceneBackground style={{ paddingTop: insets.top }}>
         <View style={styles.lockedContainer}>
           <View style={styles.lockIconContainer}>
             <Lock color={colors.accent} size={64} strokeWidth={1.5} />
@@ -223,24 +220,20 @@ export default function WindScreen() {
           >
             <Text style={styles.upgradeButtonText}>Unlock Premium</Text>
           </TouchableOpacity>
-          <Text style={styles.devNote}>(Dev: Tap to simulate premium)</Text>
+          {__DEV__ && <Text style={styles.devNote}>(Dev: Tap to simulate premium)</Text>}
         </View>
-      </View>
+      </SceneBackground>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <LinearGradient
-        colors={['rgba(35, 134, 54, 0.08)', 'transparent']}
-        style={styles.gradientOverlay}
-        pointerEvents="none"
-      />
+    <SceneBackground style={{ paddingTop: insets.top }}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
+        <Text style={styles.screenTitle}>Wind Calculator</Text>
         <Text style={styles.subtitle}>Point device at target, then lock</Text>
 
         <View style={styles.compassSection}>
@@ -282,7 +275,10 @@ export default function WindScreen() {
               <Text style={styles.windInfoText}>{windGustFormat.value} {windGustFormat.shortLabel}</Text>
             </View>
             <View style={styles.windInfoDivider} />
-            <Edit3 color={colors.textSecondary} size={14} />
+            <View style={styles.editWindHint}>
+              <Edit3 color={colors.textSecondary} size={14} />
+              <Text style={styles.editWindText}>Edit</Text>
+            </View>
           </TouchableOpacity>
         ) : (
           <View style={styles.noWeatherBar}>
@@ -381,7 +377,10 @@ export default function WindScreen() {
         transparent={true}
         onRequestClose={() => setShowManualInput(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={[styles.modalContent, { paddingBottom: insets.bottom + spacing.lg }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Manual Wind Entry</Text>
@@ -444,7 +443,7 @@ export default function WindScreen() {
               <Text style={styles.submitButtonText}>Apply</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <WindResultsModal
@@ -453,25 +452,22 @@ export default function WindScreen() {
         targetYardage={targetYardage}
         windAngle={windAngleRelativeToTarget}
       />
-    </View>
+    </SceneBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-    zIndex: 0,
-  },
   scrollView: {
     flex: 1,
+  },
+  screenTitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 2,
+    letterSpacing: -0.5,
   },
   scrollContent: {
     paddingHorizontal: spacing.md,
@@ -487,7 +483,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
-    backgroundColor: glass.cardTint.premium,
   },
   lockIconContainer: {
     width: 120,
@@ -618,6 +613,16 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     fontWeight: '600',
+  },
+  editWindHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  editWindText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '500',
   },
   distanceSection: {
     marginTop: spacing.lg,

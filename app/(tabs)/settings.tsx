@@ -8,6 +8,8 @@ import {
   TextInput,
   Switch,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -25,6 +27,7 @@ import { useReduceMotion } from '@/src/hooks/useReduceMotion';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
 import { useClubBag } from '@/src/contexts/ClubBagContext';
+import { supabase } from '@/src/lib/supabase';
 
 type OptionValue = string;
 
@@ -45,6 +48,22 @@ export default function SettingsScreen() {
   const [authError, setAuthError] = React.useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = React.useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = React.useState(false);
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setAuthError('Enter your email address first');
+      return;
+    }
+    setAuthError(null);
+    setAuthSubmitting(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    setAuthSubmitting(false);
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setAuthSuccess('Password reset email sent — check your inbox');
+    }
+  };
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -144,13 +163,17 @@ export default function SettingsScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <LinearGradient
         colors={['rgba(35, 134, 54, 0.08)', 'transparent']}
         style={styles.gradientOverlay}
         pointerEvents="none"
       />
       <ScrollView
+        keyboardShouldPersistTaps="handled"
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
@@ -225,6 +248,17 @@ export default function SettingsScreen() {
                 )}
               </TouchableOpacity>
               
+              {authMode === 'signin' && (
+                <TouchableOpacity
+                  style={styles.authToggle}
+                  onPress={handleForgotPassword}
+                  accessibilityRole="button"
+                  accessibilityLabel="Forgot password"
+                >
+                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
                 style={styles.authToggle}
                 onPress={() => {
@@ -535,7 +569,7 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -850,5 +884,10 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 13,
     textAlign: 'center',
+  },
+  forgotPasswordText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    textAlign: 'right',
   },
 });

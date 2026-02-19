@@ -8,20 +8,9 @@ import { ClubBagProvider } from '@/src/contexts/ClubBagContext';
 import { WeatherProvider } from '@/src/contexts/WeatherContext';
 import { colors } from '@/src/constants/theme';
 
-// Inner component that can access weather context
 function AppContent() {
-  // const { weather } = useWeather();
-  
   return (
     <View style={styles.container}>
-      {/* TODO: Wind background disabled - needs different rendering approach
-      <WindBackground 
-        windDirection={weather?.windDirection ?? 45}
-        intensity={1}
-      />
-      */}
-      
-      {/* Main app content */}
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />

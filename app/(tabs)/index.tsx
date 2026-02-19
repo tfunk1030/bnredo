@@ -75,13 +75,20 @@ export default function ShotScreen() {
       '7-iron'
     );
 
+    // envEffectYards: how many yards shorter/longer the hole "plays like"
+    // If ball flies farther (thin air), envEffectYards is negative (plays shorter).
+    // adjustedYardage is what club distance to use.
     const envEffectYards = -(envResult.carryDistance - targetYardage);
     const totalAdjustmentPercent = (envEffectYards / targetYardage) * 100;
     const adjustedYardage = Math.round(targetYardage + envEffectYards);
+    const yardsDelta = Math.round(Math.abs(envEffectYards));
+    const playsLonger = envEffectYards > 0;
 
     return {
       adjustedYardage,
       totalAdjustmentPercent,
+      yardsDelta,
+      playsLonger,
     };
   }, [weather, targetYardage]);
 
@@ -105,6 +112,12 @@ export default function ShotScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* APP HEADER */}
+        <View style={styles.appHeader}>
+          <Text style={styles.appTitle}>AICaddy Pro</Text>
+          <Text style={styles.appSubtitle}>Shot Calculator</Text>
+        </View>
+
         <WeatherCard />
 
         {/* TARGET DISTANCE CARD */}
@@ -226,14 +239,24 @@ export default function ShotScreen() {
             {/* BREAKDOWN */}
             {showBreakdown && (
               <View style={styles.breakdown}>
-                <Text style={styles.breakdownLabel}>Environmental Effect</Text>
-                <Text style={styles.breakdownSubtext}>
-                  (includes air density and altitude)
-                </Text>
-                <Text style={styles.breakdownValue}>
-                  {calculations.totalAdjustmentPercent > 0 ? '+' : ''}
-                  {calculations.totalAdjustmentPercent.toFixed(1)}%
-                </Text>
+                <View style={styles.breakdownRow}>
+                  <View>
+                    <Text style={styles.breakdownLabel}>Air Density &amp; Altitude</Text>
+                    <Text style={styles.breakdownSubtext}>
+                      {calculations.playsLonger
+                        ? 'Dense air — ball carries shorter'
+                        : 'Thin air — ball carries farther'}
+                    </Text>
+                  </View>
+                  <View style={styles.breakdownValueGroup}>
+                    <Text style={styles.breakdownValue}>
+                      {calculations.playsLonger ? '+' : '-'}{calculations.yardsDelta} yds
+                    </Text>
+                    <Text style={styles.breakdownPct}>
+                      ({calculations.totalAdjustmentPercent > 0 ? '+' : ''}{calculations.totalAdjustmentPercent.toFixed(1)}%)
+                    </Text>
+                  </View>
+                </View>
               </View>
             )}
           </RenderCard>
@@ -244,6 +267,27 @@ export default function ShotScreen() {
 }
 
 const styles = StyleSheet.create({
+  // APP HEADER
+  appHeader: {
+    alignItems: 'center',
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
+  appTitle: {
+    color: materialColors.primaryVibrant,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  appSubtitle: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 11,
+    fontWeight: '400',
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+
   scrollView: {
     flex: 1,
   },
@@ -374,6 +418,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderTopColor: strokes.inner,
   },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   breakdownLabel: {
     ...typography.small,
     marginBottom: 2,
@@ -381,9 +430,15 @@ const styles = StyleSheet.create({
   breakdownSubtext: {
     ...typography.label,
     fontStyle: 'italic',
-    marginBottom: spacing.xs,
+  },
+  breakdownValueGroup: {
+    alignItems: 'flex-end',
   },
   breakdownValue: {
     ...typography.body,
+  },
+  breakdownPct: {
+    ...typography.label,
+    marginTop: 2,
   },
 });

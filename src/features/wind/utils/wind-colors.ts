@@ -7,8 +7,6 @@
  * - Crosswind (45-135° or 225-315°): Yellow - caution
  */
 
-import { colors } from '@/src/constants/theme';
-
 export type WindEffect = 'tailwind' | 'headwind' | 'crosswind';
 
 export interface WindColorResult {

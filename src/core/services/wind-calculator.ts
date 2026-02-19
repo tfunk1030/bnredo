@@ -5,12 +5,7 @@ import { normalizeClubName } from '@/src/features/settings/utils/club-mapping';
 import { EnvironmentalConditions } from '@/src/core/services/environmental-calculations';
 
 // Import the new error handling system
-import {
-  WindError,
-  WindErrorFactory,
-  WindErrorHandler,
-  WindErrorType
-} from '@/src/features/wind/utils/wind-error-handler';
+import { WindErrorFactory } from '@/src/features/wind/utils/wind-error-handler';
 
 // Re-export for backward compatibility
 export { WindErrorType as WindCalculationErrorType } from '@/src/features/wind/utils/wind-error-handler';
