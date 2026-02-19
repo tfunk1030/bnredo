@@ -47,7 +47,7 @@ export function ClubBagProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       // If logged in, try Supabase first
-      if (user) {
+      if (user && supabase) {
         const { data, error } = await supabase
           .from('user_clubs')
           .select('*')
@@ -95,7 +95,7 @@ export function ClubBagProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newClubs));
 
       // If logged in, sync to Supabase
-      if (user) {
+      if (user && supabase) {
         const updatedClub = newClubs.find(c => c.key === clubKey);
         if (updatedClub) {
           const { error } = await supabase

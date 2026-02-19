@@ -61,7 +61,7 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
     setIsLoading(true);
     try {
       // If logged in, try Supabase first
-      if (user) {
+      if (user && supabase) {
         const { data, error } = await supabase
           .from('user_preferences')
           .select('*')
@@ -111,7 +111,7 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newPreferences));
 
       // If logged in, sync to Supabase
-      if (user) {
+      if (user && supabase) {
         const { error } = await supabase
           .from('user_preferences')
           .upsert({

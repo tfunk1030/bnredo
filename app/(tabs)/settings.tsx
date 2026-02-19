@@ -56,6 +56,7 @@ export default function SettingsScreen() {
     }
     setAuthError(null);
     setAuthSubmitting(true);
+    if (!supabase) { setAuthError("Auth not configured"); setAuthSubmitting(false); return; }
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     setAuthSubmitting(false);
     if (error) {
