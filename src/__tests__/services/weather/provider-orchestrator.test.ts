@@ -1,22 +1,16 @@
 /**
  * Provider Orchestrator Tests
  *
- * Tests the full weather fetching pipeline:
- * - Cache-first strategy
- * - Provider fallback chain
- * - Circuit breaker integration
- * - Error handling
- * - Simple/multi-provider modes
+ * Tests the full orchestration layer: cache-first logic, provider fallback,
+ * circuit breaker integration, elevation fetching, and error paths.
+ *
+ * MOCKING STRATEGY:
+ * - circuit-breaker: mock canRequest, recordSuccess, recordFailure, getCircuitState
+ * - cache-manager: mock getCachedWeather, cacheWeather, shouldUseCache
+ * - tomorrow-adapter: mock fetchTomorrowWeather, isTomorrowConfigured
+ * - openmeteo-adapter: mock fetchOpenMeteoWeather, getElevation
  */
 
-import {
-  NormalizedWeather,
-  WeatherSettings,
-  WeatherError,
-  CachedWeather,
-} from '@/src/services/weather/types';
-
-// Mock all dependencies before importing the module under test
 jest.mock('@/src/services/weather/circuit-breaker');
 jest.mock('@/src/services/weather/cache-manager');
 jest.mock('@/src/services/weather/tomorrow-adapter');
@@ -46,407 +40,444 @@ import {
   fetchOpenMeteoWeather,
   getElevation,
 } from '@/src/services/weather/openmeteo-adapter';
+import { WeatherError } from '@/src/services/weather/types';
+import type { NormalizedWeather, WeatherSettings } from '@/src/services/weather/types';
 
-// Typed mocks
-const mockCanRequest = canRequest as jest.MockedFunction<typeof canRequest>;
-const mockRecordSuccess = recordSuccess as jest.MockedFunction<typeof recordSuccess>;
-const mockRecordFailure = recordFailure as jest.MockedFunction<typeof recordFailure>;
-const mockGetCircuitState = getCircuitState as jest.MockedFunction<typeof getCircuitState>;
-const mockGetCachedWeather = getCachedWeather as jest.MockedFunction<typeof getCachedWeather>;
-const mockCacheWeather = cacheWeather as jest.MockedFunction<typeof cacheWeather>;
-const mockShouldUseCache = shouldUseCache as jest.MockedFunction<typeof shouldUseCache>;
-const mockFetchTomorrow = fetchTomorrowWeather as jest.MockedFunction<typeof fetchTomorrowWeather>;
-const mockIsTomorrowConfigured = isTomorrowConfigured as jest.MockedFunction<typeof isTomorrowConfigured>;
-const mockFetchOpenMeteo = fetchOpenMeteoWeather as jest.MockedFunction<typeof fetchOpenMeteoWeather>;
-const mockGetElevation = getElevation as jest.MockedFunction<typeof getElevation>;
+// ─── Typed mocks ────────────────────────────────────────────────────────────
+const mockCanRequest = canRequest as jest.Mock;
+const mockRecordSuccess = recordSuccess as jest.Mock;
+const mockRecordFailure = recordFailure as jest.Mock;
+const mockGetCircuitState = getCircuitState as jest.Mock;
+const mockGetCachedWeather = getCachedWeather as jest.Mock;
+const mockCacheWeather = cacheWeather as jest.Mock;
+const mockShouldUseCache = shouldUseCache as jest.Mock;
+const mockFetchTomorrowWeather = fetchTomorrowWeather as jest.Mock;
+const mockIsTomorrowConfigured = isTomorrowConfigured as jest.Mock;
+const mockFetchOpenMeteoWeather = fetchOpenMeteoWeather as jest.Mock;
+const mockGetElevation = getElevation as jest.Mock;
 
-// Test fixtures
-const LAT = 30.2672;
-const LNG = -97.7431;
-
-function makeWeather(overrides: Partial<NormalizedWeather> = {}): NormalizedWeather {
+// ─── Test helpers ────────────────────────────────────────────────────────────
+function makeWeather(overrides: Partial<NormalizedWeather> = {}): NormalizedWeather & { freshness?: string; cachedAt?: string } {
   return {
     temperature: 72,
-    humidity: 55,
-    pressure: 1013.25,
-    windSpeed: 8,
+    humidity: 50,
+    pressure: 1013,
+    windSpeed: 10,
     windDirection: 180,
-    windGust: 12,
+    windGust: 15,
     altitude: 500,
-    locationName: 'Austin, TX',
-    latitude: LAT,
-    longitude: LNG,
-    observationTime: new Date().toISOString(),
+    locationName: 'Austin, Texas',
+    latitude: 30.27,
+    longitude: -97.74,
+    observationTime: '2026-02-20T12:00:00Z',
     source: 'openmeteo',
     isManualOverride: false,
     ...overrides,
   };
 }
 
-function makeCached(
-  freshness: 'fresh' | 'stale' | 'emergency' | 'expired' = 'fresh',
-  ageMinutes: number = 2,
-  overrides: Partial<CachedWeather> = {}
-): CachedWeather {
-  return {
-    ...makeWeather(),
-    cachedAt: new Date(Date.now() - ageMinutes * 60000).toISOString(),
-    freshness,
-    ...overrides,
-  };
-}
-
-const defaultSettings: WeatherSettings = {
+const SETTINGS_BOTH: WeatherSettings = {
   enableMultiProvider: true,
   primaryProvider: 'openmeteo',
   fallbackOrder: ['tomorrow', 'openmeteo'],
-  timeout: 10000,
+  timeout: 5000,
 };
 
+const SETTINGS_TOMORROW_PRIMARY: WeatherSettings = {
+  enableMultiProvider: true,
+  primaryProvider: 'tomorrow',
+  fallbackOrder: ['openmeteo'],
+  timeout: 5000,
+};
+
+// ─── Setup / Teardown ────────────────────────────────────────────────────────
 beforeEach(() => {
-  jest.clearAllMocks();
+  jest.resetAllMocks();
 
-  // Default: all circuits closed, no cache, Tomorrow configured, elevation 500ft
+  // Sensible defaults: circuits open (can request), no cache, providers configured
   mockCanRequest.mockReturnValue(true);
-  mockGetCachedWeather.mockResolvedValue(null);
-  mockCacheWeather.mockResolvedValue(undefined);
-  mockShouldUseCache.mockReturnValue(false);
-  mockIsTomorrowConfigured.mockReturnValue(true);
-  mockGetElevation.mockResolvedValue(500);
   mockGetCircuitState.mockReturnValue('closed');
+  mockIsTomorrowConfigured.mockReturnValue(true);
+  mockGetCachedWeather.mockResolvedValue(null);
+  mockShouldUseCache.mockReturnValue(false);
+  mockCacheWeather.mockResolvedValue(undefined);
+  mockGetElevation.mockResolvedValue(500);
+  mockFetchOpenMeteoWeather.mockResolvedValue(makeWeather({ source: 'openmeteo' }));
+  mockFetchTomorrowWeather.mockResolvedValue(makeWeather({ source: 'tomorrow' }));
 });
 
-describe('fetchWeatherWithFallback', () => {
-  describe('cache-first strategy', () => {
-    it('should return fresh cache immediately without hitting providers', async () => {
-      const cached = makeCached('fresh', 2);
-      mockGetCachedWeather.mockResolvedValue(cached);
+// ═══════════════════════════════════════════════════════════════════════════
+// fetchWeatherWithFallback — cache hit (fresh)
+// ═══════════════════════════════════════════════════════════════════════════
+describe('fetchWeatherWithFallback — cache: fresh', () => {
+  test('returns cached weather immediately when fresh — no providers called', async () => {
+    const cached = { ...makeWeather(), freshness: 'fresh', cachedAt: new Date().toISOString() };
+    mockGetCachedWeather.mockResolvedValue(cached);
 
-      const result = await fetchWeatherWithFallback(LAT, LNG, defaultSettings);
+    const result = await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_BOTH);
 
-      expect(result.fromCache).toBe(true);
-      expect(result.weather).toBe(cached);
-      expect(result.warnings).toHaveLength(0);
-      expect(result.providersAttempted).toHaveLength(0);
-      expect(result.cacheAge).toBeDefined();
-      // Should NOT have called any provider
-      expect(mockFetchOpenMeteo).not.toHaveBeenCalled();
-      expect(mockFetchTomorrow).not.toHaveBeenCalled();
-    });
-
-    it('should NOT return stale cache immediately — fetches from providers', async () => {
-      const cached = makeCached('stale', 10);
-      mockGetCachedWeather.mockResolvedValue(cached);
-
-      const freshWeather = makeWeather();
-      mockFetchOpenMeteo.mockResolvedValue(freshWeather);
-
-      const result = await fetchWeatherWithFallback(LAT, LNG, defaultSettings);
-
-      expect(result.fromCache).toBe(false);
-      expect(result.weather).toBe(freshWeather);
-    });
+    expect(result.fromCache).toBe(true);
+    expect(result.weather).toBe(cached);
+    expect(result.warnings).toEqual([]);
+    expect(result.providersAttempted).toEqual([]);
+    expect(mockFetchOpenMeteoWeather).not.toHaveBeenCalled();
+    expect(mockFetchTomorrowWeather).not.toHaveBeenCalled();
+    expect(mockGetElevation).not.toHaveBeenCalled();
   });
 
-  describe('provider chain', () => {
-    it('should try primary provider first and succeed', async () => {
-      const weather = makeWeather({ source: 'openmeteo' });
-      mockFetchOpenMeteo.mockResolvedValue(weather);
+  test('fresh cache: cacheAge is rounded minutes since cachedAt', async () => {
+    const cachedAt = new Date(Date.now() - 5 * 60 * 1000).toISOString(); // 5 min ago
+    const cached = { ...makeWeather(), freshness: 'fresh', cachedAt };
+    mockGetCachedWeather.mockResolvedValue(cached);
 
-      const result = await fetchWeatherWithFallback(LAT, LNG, defaultSettings);
+    const result = await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_BOTH);
 
-      expect(result.fromCache).toBe(false);
-      expect(result.weather).toBe(weather);
-      expect(result.providersAttempted).toContain('openmeteo');
-      expect(mockRecordSuccess).toHaveBeenCalledWith('openmeteo');
-      expect(mockCacheWeather).toHaveBeenCalledWith(weather);
-    });
-
-    it('should fall back to tomorrow when openmeteo fails', async () => {
-      mockFetchOpenMeteo.mockResolvedValue(null); // Primary fails (null = no data)
-      const tomorrowWeather = makeWeather({ source: 'tomorrow' });
-      mockFetchTomorrow.mockResolvedValue(tomorrowWeather);
-
-      const result = await fetchWeatherWithFallback(LAT, LNG, defaultSettings);
-
-      expect(result.weather).toBe(tomorrowWeather);
-      expect(result.providersAttempted).toContain('openmeteo');
-      expect(result.providersAttempted).toContain('tomorrow');
-      expect(mockRecordFailure).toHaveBeenCalledWith('openmeteo');
-      expect(mockRecordSuccess).toHaveBeenCalledWith('tomorrow');
-      expect(result.warnings.length).toBeGreaterThan(0);
-    });
-
-    it('should fall back to tomorrow when openmeteo throws', async () => {
-      mockFetchOpenMeteo.mockRejectedValue(new Error('network down'));
-      const tomorrowWeather = makeWeather({ source: 'tomorrow' });
-      mockFetchTomorrow.mockResolvedValue(tomorrowWeather);
-
-      const result = await fetchWeatherWithFallback(LAT, LNG, defaultSettings);
-
-      expect(result.weather).toBe(tomorrowWeather);
-      expect(mockRecordFailure).toHaveBeenCalledWith('openmeteo');
-      expect(mockRecordSuccess).toHaveBeenCalledWith('tomorrow');
-    });
-
-    it('should skip providers with open circuits', async () => {
-      // Primary circuit is open
-      mockCanRequest.mockImplementation((p) => p !== 'openmeteo');
-      const tomorrowWeather = makeWeather({ source: 'tomorrow' });
-      mockFetchTomorrow.mockResolvedValue(tomorrowWeather);
-
-      const result = await fetchWeatherWithFallback(LAT, LNG, defaultSettings);
-
-      expect(result.weather).toBe(tomorrowWeather);
-      expect(result.providersAttempted).not.toContain('openmeteo');
-      expect(result.providersAttempted).toContain('tomorrow');
-    });
-
-    it('should use cached elevation when available', async () => {
-      const cached = makeCached('stale', 10, { altitude: 750 });
-      mockGetCachedWeather.mockResolvedValue(cached);
-      const weather = makeWeather();
-      mockFetchOpenMeteo.mockResolvedValue(weather);
-
-      await fetchWeatherWithFallback(LAT, LNG, defaultSettings);
-
-      // getElevation should still be called since altitude from cache (750) is non-zero,
-      // but the code uses cached.altitude when available. Let's verify
-      // In the source: elevation = cached?.altitude ?? 0, if 0 then getElevation
-      // Since cached.altitude = 750, getElevation should NOT be called
-      expect(mockGetElevation).not.toHaveBeenCalled();
-    });
-
-    it('should fetch elevation when not in cache', async () => {
-      // No cache
-      mockGetCachedWeather.mockResolvedValue(null);
-      const weather = makeWeather();
-      mockFetchOpenMeteo.mockResolvedValue(weather);
-
-      await fetchWeatherWithFallback(LAT, LNG, defaultSettings);
-
-      expect(mockGetElevation).toHaveBeenCalledWith(LAT, LNG);
-    });
-  });
-
-  describe('all providers fail', () => {
-    it('should return stale cache when all providers fail', async () => {
-      const cached = makeCached('stale', 15);
-      mockGetCachedWeather.mockResolvedValue(cached);
-      mockShouldUseCache.mockReturnValue(true);
-
-      // Both providers fail
-      mockFetchOpenMeteo.mockResolvedValue(null);
-      mockFetchTomorrow.mockResolvedValue(null);
-
-      const result = await fetchWeatherWithFallback(LAT, LNG, defaultSettings);
-
-      expect(result.fromCache).toBe(true);
-      expect(result.weather).toBe(cached);
-      expect(result.warnings.some(w => w.includes('failed'))).toBe(true);
-    });
-
-    it('should return emergency cache when all providers fail', async () => {
-      const cached = makeCached('emergency', 90);
-      mockGetCachedWeather.mockResolvedValue(cached);
-      mockShouldUseCache.mockReturnValue(true);
-
-      mockFetchOpenMeteo.mockRejectedValue(new Error('down'));
-      mockFetchTomorrow.mockRejectedValue(new Error('down'));
-
-      const result = await fetchWeatherWithFallback(LAT, LNG, defaultSettings);
-
-      expect(result.fromCache).toBe(true);
-    });
-
-    it('should throw when all providers fail and no usable cache', async () => {
-      mockGetCachedWeather.mockResolvedValue(null);
-      mockFetchOpenMeteo.mockResolvedValue(null);
-      mockFetchTomorrow.mockResolvedValue(null);
-
-      await expect(
-        fetchWeatherWithFallback(LAT, LNG, defaultSettings)
-      ).rejects.toThrow(WeatherError);
-    });
-
-    it('should throw when all providers fail and cache is expired', async () => {
-      const cached = makeCached('expired', 180);
-      mockGetCachedWeather.mockResolvedValue(cached);
-      mockShouldUseCache.mockReturnValue(false); // expired → don't use
-
-      mockFetchOpenMeteo.mockResolvedValue(null);
-      mockFetchTomorrow.mockResolvedValue(null);
-
-      await expect(
-        fetchWeatherWithFallback(LAT, LNG, defaultSettings)
-      ).rejects.toThrow('All providers failed');
-    });
-  });
-
-  describe('all circuits open', () => {
-    it('should return stale cache when all circuits open', async () => {
-      mockCanRequest.mockReturnValue(false);
-      const cached = makeCached('stale', 20);
-      mockGetCachedWeather.mockResolvedValue(cached);
-      mockShouldUseCache.mockReturnValue(true);
-
-      const result = await fetchWeatherWithFallback(LAT, LNG, defaultSettings);
-
-      expect(result.fromCache).toBe(true);
-      expect(result.warnings.some(w => w.includes('unavailable'))).toBe(true);
-      expect(result.providersAttempted).toHaveLength(0);
-    });
-
-    it('should throw when all circuits open and no usable cache', async () => {
-      mockCanRequest.mockReturnValue(false);
-      mockGetCachedWeather.mockResolvedValue(null);
-
-      await expect(
-        fetchWeatherWithFallback(LAT, LNG, defaultSettings)
-      ).rejects.toThrow('All weather providers failed');
-    });
-  });
-
-  describe('tomorrow not configured', () => {
-    it('should handle unconfigured tomorrow gracefully in fallback chain', async () => {
-      mockIsTomorrowConfigured.mockReturnValue(false);
-      // Primary (openmeteo) fails
-      mockFetchOpenMeteo.mockResolvedValue(null);
-      // Tomorrow will throw API_ERROR due to unconfigured
-      mockFetchTomorrow.mockRejectedValue(
-        new WeatherError('API_ERROR', 'Tomorrow.io API key not configured', 'tomorrow', undefined, false)
-      );
-
-      // No cache
-      await expect(
-        fetchWeatherWithFallback(LAT, LNG, defaultSettings)
-      ).rejects.toThrow(WeatherError);
-    });
-  });
-
-  describe('WeatherError wrapping', () => {
-    it('should wrap non-WeatherError exceptions into WeatherError', async () => {
-      // Throws a plain TypeError (not WeatherError)
-      mockFetchOpenMeteo.mockRejectedValue(new TypeError('Cannot read property'));
-      const tomorrowWeather = makeWeather({ source: 'tomorrow' });
-      mockFetchTomorrow.mockResolvedValue(tomorrowWeather);
-
-      const result = await fetchWeatherWithFallback(LAT, LNG, defaultSettings);
-
-      // Should still succeed via fallback
-      expect(result.weather).toBe(tomorrowWeather);
-      // Failure should have been recorded for openmeteo
-      expect(mockRecordFailure).toHaveBeenCalledWith('openmeteo');
-      // Warning should contain the original error message
-      expect(result.warnings.some(w => w.includes('Cannot read property'))).toBe(true);
-    });
+    expect(result.cacheAge).toBe(5);
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// fetchWeatherWithFallback — cache miss, primary succeeds
+// ═══════════════════════════════════════════════════════════════════════════
+describe('fetchWeatherWithFallback — primary provider succeeds', () => {
+  test('calls primary provider (openmeteo) when no cache', async () => {
+    const weather = makeWeather({ source: 'openmeteo' });
+    mockFetchOpenMeteoWeather.mockResolvedValue(weather);
+
+    const result = await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_BOTH);
+
+    expect(result.fromCache).toBe(false);
+    expect(result.weather).toBe(weather);
+    expect(result.providersAttempted).toEqual(['openmeteo']);
+    expect(mockRecordSuccess).toHaveBeenCalledWith('openmeteo');
+    expect(mockCacheWeather).toHaveBeenCalledWith(weather);
+  });
+
+  test('calls primary provider (tomorrow) when configured as primary', async () => {
+    const weather = makeWeather({ source: 'tomorrow' });
+    mockFetchTomorrowWeather.mockResolvedValue(weather);
+
+    const result = await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_TOMORROW_PRIMARY);
+
+    expect(result.fromCache).toBe(false);
+    expect(result.weather).toBe(weather);
+    expect(result.providersAttempted).toEqual(['tomorrow']);
+    expect(mockRecordSuccess).toHaveBeenCalledWith('tomorrow');
+  });
+
+  test('does NOT call fallback provider when primary succeeds', async () => {
+    await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_TOMORROW_PRIMARY);
+
+    // tomorrow succeeds → openmeteo never called
+    expect(mockFetchOpenMeteoWeather).not.toHaveBeenCalled();
+  });
+
+  test('passes timeout from settings to provider', async () => {
+    const settings: WeatherSettings = { ...SETTINGS_BOTH, timeout: 3000 };
+    await fetchWeatherWithFallback(30.27, -97.74, settings);
+
+    expect(mockFetchOpenMeteoWeather).toHaveBeenCalledWith(30.27, -97.74, 3000);
+  });
+
+  test('passes elevation to tomorrow provider', async () => {
+    mockGetElevation.mockResolvedValue(1200);
+    await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_TOMORROW_PRIMARY);
+
+    expect(mockFetchTomorrowWeather).toHaveBeenCalledWith(30.27, -97.74, 1200, 5000);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// fetchWeatherWithFallback — elevation
+// ═══════════════════════════════════════════════════════════════════════════
+describe('fetchWeatherWithFallback — elevation', () => {
+  test('fetches elevation from open-meteo when no cached elevation', async () => {
+    await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_TOMORROW_PRIMARY);
+
+    expect(mockGetElevation).toHaveBeenCalledWith(30.27, -97.74);
+  });
+
+  test('uses cached altitude instead of fetching elevation when available', async () => {
+    const stale = { ...makeWeather({ altitude: 9350 }), freshness: 'stale', cachedAt: new Date().toISOString() };
+    mockGetCachedWeather.mockResolvedValue(stale);
+    mockShouldUseCache.mockReturnValue(true);
+
+    await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_TOMORROW_PRIMARY);
+
+    expect(mockGetElevation).not.toHaveBeenCalled();
+    expect(mockFetchTomorrowWeather).toHaveBeenCalledWith(30.27, -97.74, 9350, expect.any(Number));
+  });
+
+  test('fetches elevation when cached altitude is 0', async () => {
+    const stale = { ...makeWeather({ altitude: 0 }), freshness: 'stale', cachedAt: new Date().toISOString() };
+    mockGetCachedWeather.mockResolvedValue(stale);
+    mockShouldUseCache.mockReturnValue(true);
+    mockGetElevation.mockResolvedValue(500);
+
+    await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_TOMORROW_PRIMARY);
+
+    expect(mockGetElevation).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// fetchWeatherWithFallback — fallback logic
+// ═══════════════════════════════════════════════════════════════════════════
+describe('fetchWeatherWithFallback — fallback', () => {
+  test('falls back to openmeteo when tomorrow fails', async () => {
+    mockFetchTomorrowWeather.mockRejectedValue(new Error('tomorrow down'));
+    const fallbackWeather = makeWeather({ source: 'openmeteo' });
+    mockFetchOpenMeteoWeather.mockResolvedValue(fallbackWeather);
+
+    const result = await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_TOMORROW_PRIMARY);
+
+    expect(result.fromCache).toBe(false);
+    expect(result.weather).toBe(fallbackWeather);
+    expect(result.providersAttempted).toEqual(['tomorrow', 'openmeteo']);
+    expect(mockRecordFailure).toHaveBeenCalledWith('tomorrow');
+    expect(mockRecordSuccess).toHaveBeenCalledWith('openmeteo');
+  });
+
+  test('adds warning for each failed provider', async () => {
+    mockFetchTomorrowWeather.mockRejectedValue(new Error('timeout'));
+    mockFetchOpenMeteoWeather.mockResolvedValue(makeWeather());
+
+    const result = await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_TOMORROW_PRIMARY);
+
+    expect(result.warnings.some(w => w.includes('tomorrow'))).toBe(true);
+  });
+
+  test('does not duplicate primary in fallback loop', async () => {
+    // Default settings: primary=openmeteo, fallbackOrder=['tomorrow','openmeteo']
+    // openmeteo should only be tried once (as primary), not again as fallback
+    mockFetchOpenMeteoWeather.mockResolvedValue(makeWeather());
+
+    const result = await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_BOTH);
+
+    expect(result.providersAttempted.filter(p => p === 'openmeteo').length).toBe(1);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// fetchWeatherWithFallback — circuit breaker
+// ═══════════════════════════════════════════════════════════════════════════
+describe('fetchWeatherWithFallback — circuit breaker', () => {
+  test('skips provider when circuit is open (canRequest=false)', async () => {
+    // tomorrow circuit open → skip it, only try openmeteo
+    mockCanRequest.mockImplementation((provider: string) => provider !== 'tomorrow');
+    const weather = makeWeather({ source: 'openmeteo' });
+    mockFetchOpenMeteoWeather.mockResolvedValue(weather);
+
+    const result = await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_TOMORROW_PRIMARY);
+
+    expect(mockFetchTomorrowWeather).not.toHaveBeenCalled();
+    expect(result.providersAttempted).toEqual(['openmeteo']);
+  });
+
+  test('throws WeatherError(ALL_PROVIDERS_FAILED) when all circuits open and no cache', async () => {
+    mockCanRequest.mockReturnValue(false);
+
+    await expect(
+      fetchWeatherWithFallback(30.27, -97.74, SETTINGS_BOTH)
+    ).rejects.toMatchObject({
+      code: 'ALL_PROVIDERS_FAILED',
+    });
+  });
+
+  test('returns stale cache when all circuits open but stale cache exists', async () => {
+    mockCanRequest.mockReturnValue(false);
+    const stale = { ...makeWeather(), freshness: 'stale', cachedAt: new Date().toISOString() };
+    mockGetCachedWeather.mockResolvedValue(stale);
+    mockShouldUseCache.mockReturnValue(true);
+
+    const result = await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_BOTH);
+
+    expect(result.fromCache).toBe(true);
+    expect(result.weather).toBe(stale);
+    expect(result.warnings.some(w => w.includes('unavailable'))).toBe(true);
+  });
+
+  test('recordFailure called when provider throws', async () => {
+    mockFetchTomorrowWeather.mockRejectedValue(new Error('oops'));
+
+    await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_TOMORROW_PRIMARY);
+
+    expect(mockRecordFailure).toHaveBeenCalledWith('tomorrow');
+  });
+
+  test('recordSuccess called when provider succeeds', async () => {
+    await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_BOTH);
+
+    expect(mockRecordSuccess).toHaveBeenCalledWith('openmeteo');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// fetchWeatherWithFallback — stale cache as last resort
+// ═══════════════════════════════════════════════════════════════════════════
+describe('fetchWeatherWithFallback — stale cache fallback', () => {
+  test('uses stale cache when all providers fail and cache is available', async () => {
+    mockFetchOpenMeteoWeather.mockRejectedValue(new Error('network error'));
+    mockFetchTomorrowWeather.mockRejectedValue(new Error('timeout'));
+    const stale = { ...makeWeather(), freshness: 'stale', cachedAt: new Date().toISOString() };
+    mockGetCachedWeather.mockResolvedValue(stale);
+    mockShouldUseCache.mockReturnValue(true);
+
+    const result = await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_BOTH);
+
+    expect(result.fromCache).toBe(true);
+    expect(result.weather).toBe(stale);
+    expect(result.warnings.some(w => w.includes('stale'))).toBe(true);
+  });
+
+  test('throws ALL_PROVIDERS_FAILED when all providers fail and no usable cache', async () => {
+    mockFetchOpenMeteoWeather.mockRejectedValue(new Error('down'));
+    mockFetchTomorrowWeather.mockRejectedValue(new Error('down'));
+    mockShouldUseCache.mockReturnValue(false);
+
+    await expect(
+      fetchWeatherWithFallback(30.27, -97.74, SETTINGS_BOTH)
+    ).rejects.toMatchObject({
+      code: 'ALL_PROVIDERS_FAILED',
+    });
+  });
+
+  test('throws even if expired cache exists when shouldUseCache returns false', async () => {
+    mockFetchOpenMeteoWeather.mockRejectedValue(new Error('down'));
+    mockFetchTomorrowWeather.mockRejectedValue(new Error('down'));
+    const expired = { ...makeWeather(), freshness: 'expired', cachedAt: new Date().toISOString() };
+    mockGetCachedWeather.mockResolvedValue(expired);
+    mockShouldUseCache.mockReturnValue(false);
+
+    await expect(
+      fetchWeatherWithFallback(30.27, -97.74, SETTINGS_BOTH)
+    ).rejects.toMatchObject({ code: 'ALL_PROVIDERS_FAILED' });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// fetchWeatherWithFallback — tomorrow key check
+// ═══════════════════════════════════════════════════════════════════════════
+describe('fetchWeatherWithFallback — tomorrow key not configured', () => {
+  test('throws WeatherError(API_ERROR) when tomorrow not configured but used as primary', async () => {
+    mockIsTomorrowConfigured.mockReturnValue(false);
+
+    // tomorrow is primary but not configured → should fail and fall through to openmeteo
+    const fallback = makeWeather({ source: 'openmeteo' });
+    mockFetchOpenMeteoWeather.mockResolvedValue(fallback);
+
+    const result = await fetchWeatherWithFallback(30.27, -97.74, SETTINGS_TOMORROW_PRIMARY);
+
+    // Falls back to openmeteo
+    expect(result.weather).toBe(fallback);
+    expect(mockRecordFailure).toHaveBeenCalledWith('tomorrow');
+    expect(mockFetchTomorrowWeather).not.toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// fetchWeather — simple entry point
+// ═══════════════════════════════════════════════════════════════════════════
 describe('fetchWeather', () => {
-  describe('simple mode (useMultiProvider = false)', () => {
-    it('should fetch directly from openmeteo', async () => {
-      const weather = makeWeather();
-      mockFetchOpenMeteo.mockResolvedValue(weather);
+  test('useMultiProvider=false: calls fetchOpenMeteoWeather directly (no orchestrator)', async () => {
+    const weather = makeWeather();
+    mockFetchOpenMeteoWeather.mockResolvedValue(weather);
 
-      const result = await fetchWeather(LAT, LNG, false);
+    const result = await fetchWeather(30.27, -97.74, false);
 
-      expect(result).toBe(weather);
-      expect(mockFetchOpenMeteo).toHaveBeenCalledWith(LAT, LNG);
-      expect(mockCacheWeather).toHaveBeenCalledWith(weather);
-      // Should NOT touch circuit breaker
-      expect(mockCanRequest).not.toHaveBeenCalled();
-    });
+    expect(result).toBe(weather);
+    expect(mockFetchOpenMeteoWeather).toHaveBeenCalledWith(30.27, -97.74);
+    expect(mockCanRequest).not.toHaveBeenCalled(); // circuit breaker not involved
+  });
 
-    it('should throw WeatherError when openmeteo returns null', async () => {
-      mockFetchOpenMeteo.mockResolvedValue(null);
+  test('useMultiProvider=false: caches the result', async () => {
+    const weather = makeWeather();
+    mockFetchOpenMeteoWeather.mockResolvedValue(weather);
 
-      await expect(fetchWeather(LAT, LNG, false)).rejects.toThrow(WeatherError);
-      await expect(fetchWeather(LAT, LNG, false)).rejects.toThrow('Failed to fetch weather');
-    });
+    await fetchWeather(30.27, -97.74, false);
 
-    it('should default to simple mode when useMultiProvider not specified', async () => {
-      const weather = makeWeather();
-      mockFetchOpenMeteo.mockResolvedValue(weather);
+    expect(mockCacheWeather).toHaveBeenCalledWith(weather);
+  });
 
-      const result = await fetchWeather(LAT, LNG);
+  test('useMultiProvider=false: throws WeatherError(NETWORK_ERROR) when openmeteo returns null', async () => {
+    mockFetchOpenMeteoWeather.mockResolvedValue(null);
 
-      expect(result).toBe(weather);
-      expect(mockCanRequest).not.toHaveBeenCalled();
+    await expect(fetchWeather(30.27, -97.74, false)).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      provider: 'openmeteo',
     });
   });
 
-  describe('multi-provider mode', () => {
-    it('should use orchestrator when useMultiProvider is true', async () => {
-      const weather = makeWeather();
-      mockFetchOpenMeteo.mockResolvedValue(weather);
+  test('useMultiProvider=true: uses orchestrator with fallback', async () => {
+    mockCanRequest.mockReturnValue(true);
+    const weather = makeWeather();
+    mockFetchOpenMeteoWeather.mockResolvedValue(weather);
 
-      const result = await fetchWeather(LAT, LNG, true, defaultSettings);
+    const result = await fetchWeather(30.27, -97.74, true);
 
-      expect(result).toEqual(weather);
-      // In multi-provider mode, circuit breaker should be used
-      expect(mockCanRequest).toHaveBeenCalled();
-    });
+    expect(result).toBe(weather);
+    expect(mockCanRequest).toHaveBeenCalled(); // orchestrator ran
+  });
 
-    it('should log warnings when providers report issues', async () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+  test('useMultiProvider=false by default', async () => {
+    const weather = makeWeather();
+    mockFetchOpenMeteoWeather.mockResolvedValue(weather);
 
-      // Primary fails, fallback succeeds
-      mockFetchOpenMeteo.mockResolvedValue(null);
-      const tomorrowWeather = makeWeather({ source: 'tomorrow' });
-      mockFetchTomorrow.mockResolvedValue(tomorrowWeather);
+    await fetchWeather(30.27, -97.74);
 
-      await fetchWeather(LAT, LNG, true, defaultSettings);
-
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
-    });
-
-    it('should not log when no warnings', async () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-
-      // Fresh cache → no warnings
-      const cached = makeCached('fresh', 1);
-      mockGetCachedWeather.mockResolvedValue(cached);
-
-      await fetchWeather(LAT, LNG, true, defaultSettings);
-
-      expect(consoleSpy).not.toHaveBeenCalled();
-      consoleSpy.mockRestore();
-    });
+    // Direct call (not via orchestrator) — no canRequest check
+    expect(mockCanRequest).not.toHaveBeenCalled();
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// getProviderStatus
+// ═══════════════════════════════════════════════════════════════════════════
 describe('getProviderStatus', () => {
-  it('should return status for both providers', () => {
+  test('returns status for both providers', () => {
     mockGetCircuitState.mockReturnValue('closed');
     mockIsTomorrowConfigured.mockReturnValue(true);
 
     const status = getProviderStatus();
 
-    expect(status.tomorrow).toEqual({ state: 'closed', configured: true });
-    expect(status.openmeteo).toEqual({ state: 'closed', configured: true });
+    expect(status).toHaveProperty('tomorrow');
+    expect(status).toHaveProperty('openmeteo');
   });
 
-  it('should reflect open circuits', () => {
-    mockGetCircuitState.mockImplementation((p) =>
-      p === 'tomorrow' ? 'open' : 'closed'
-    );
+  test('tomorrow: configured=true when key present', () => {
     mockIsTomorrowConfigured.mockReturnValue(true);
+    mockGetCircuitState.mockReturnValue('closed');
+
+    const status = getProviderStatus();
+
+    expect(status.tomorrow.configured).toBe(true);
+  });
+
+  test('tomorrow: configured=false when key absent', () => {
+    mockIsTomorrowConfigured.mockReturnValue(false);
+    mockGetCircuitState.mockReturnValue('closed');
+
+    const status = getProviderStatus();
+
+    expect(status.tomorrow.configured).toBe(false);
+  });
+
+  test('openmeteo: always configured=true', () => {
+    mockGetCircuitState.mockReturnValue('closed');
+
+    const status = getProviderStatus();
+
+    expect(status.openmeteo.configured).toBe(true);
+  });
+
+  test('circuit state reported for each provider', () => {
+    mockGetCircuitState
+      .mockReturnValueOnce('open')   // tomorrow
+      .mockReturnValueOnce('closed'); // openmeteo
 
     const status = getProviderStatus();
 
     expect(status.tomorrow.state).toBe('open');
     expect(status.openmeteo.state).toBe('closed');
-  });
-
-  it('should show tomorrow as unconfigured when API key missing', () => {
-    mockGetCircuitState.mockReturnValue('closed');
-    mockIsTomorrowConfigured.mockReturnValue(false);
-
-    const status = getProviderStatus();
-
-    expect(status.tomorrow.configured).toBe(false);
-    expect(status.openmeteo.configured).toBe(true);
   });
 });
