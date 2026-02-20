@@ -58,11 +58,12 @@ export function GlassCard({
   // On Android or when reduce motion is enabled, use solid background instead of blur
   const useBlur = Platform.OS === 'ios' && !reduceMotion;
 
+  // RENDER FIX (Feb 8): Subtle edge lighting with 0.5pt border
   const containerStyle: ViewStyle = {
     borderRadius: borderRadiusValue,
     overflow: 'hidden',
     ...(bordered && {
-      borderWidth: 1,
+      borderWidth: 0.5,  // Was 1 → thinner for subtlety
       borderColor: `rgba(255, 255, 255, ${glass.borderOpacity})`,
     }),
   };
@@ -89,7 +90,8 @@ export function GlassCard({
     );
   }
 
-  // Fallback for Android or reduced motion: solid surface color
+  // Fallback for Android or reduced motion: translucent surface
+  // RENDER FIX (Feb 8): Use translucent background, not opaque
   return (
     <View
       style={[
@@ -111,6 +113,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   fallbackBackground: {
-    backgroundColor: colors.surfaceElevated,
+    // RENDER FIX: Translucent instead of solid opaque
+    backgroundColor: `rgba(34, 34, 34, ${glass.backgroundOpacity.subtle})`,
   },
 });

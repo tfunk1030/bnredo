@@ -1,4 +1,5 @@
 import { normalizeClubName } from '@/src/features/settings/utils/club-mapping';
+import { calculateAirDensity as calculateAirDensityPhysics } from '@/src/core/physics/air-density';
 
 export enum SkillLevel {
   BEGINNER = "beginner",
@@ -42,17 +43,14 @@ export class YardageModelEnhanced {
   private static readonly LATERAL_BASE_MULTIPLIER: number = 2.0; // Refined value
   private static readonly SPIN_GYRO_THRESHOLD: number = 6000; // RPM threshold
   private static readonly SPIN_TRANSITION_ZONE: number = 300; // RPM transition width
-  private static readonly AIR_DENSITY_SEA_LEVEL: number = 1.193; // kg/m³
+  private static readonly AIR_DENSITY_SEA_LEVEL: number = 1.177; // kg/m³ (77°F, 1013.25 hPa, 50% RH - TrackMan standard)
   private static readonly REFERENCE_VELOCITY: number = 50; // m/s for spin decay
   private static readonly ALTITUDE_PRESSURE_RATIO = 0.190284;
   private static readonly DENSITY_EXPONENT_SEA: number = 0.7; // Tuned for viscosity compensation
   private static readonly DENSITY_EXPONENT_ALT: number = 0.5;
   private static readonly ALTITUDE_THRESHOLD: number = 3000;
-  private static readonly MAGNUS_A = 6.1121;
-  private static readonly MAGNUS_B = 17.502;
-  private static readonly MAGNUS_C = 240.97;
-  private static readonly GAS_CONSTANT_DRY = 287.058;
-  private static readonly GAS_CONSTANT_VAPOR = 461.495;
+  // REMOVED: MAGNUS_A, MAGNUS_B, MAGNUS_C, GAS_CONSTANT_DRY, GAS_CONSTANT_VAPOR
+  // Air density calculation now delegates to core/physics/air-density.ts (single source of truth)
 
   // Club database with refined wind sensitivity coefficients
   private static readonly CLUB_DATABASE: Readonly<Record<string, ClubData>> = {
@@ -238,38 +236,11 @@ export class YardageModelEnhanced {
   }
 
   /**
-   * Calculate air density from temperature, pressure, and humidity.
-   *
-   * IMPORTANT: This function expects STATION PRESSURE (actual local pressure
-   * at the measurement location), not MSL (mean sea level) pressure.
-   *
-   * Station pressure naturally decreases with altitude (~12 hPa per 100m),
-   * so altitude effects on ball flight are automatically incorporated when
-   * using station pressure. No separate altitude adjustment is needed.
-   *
-   * Weather APIs used:
-   * - Open-Meteo: `surface_pressure` (station pressure) ✓
-   * - Tomorrow.io: `pressureSurfaceLevel` (station pressure) ✓
-   *
-   * If using MSL pressure, you must convert to station pressure first:
-   * P_station = P_msl × exp(-g×M×h / (R×T))
-   *
-   * @param tempF Temperature in Fahrenheit
-   * @param pressureMb Pressure in millibars (hPa) - MUST be station pressure
-   * @param humidity Relative humidity (0-100%)
-   * @returns Air density in kg/m³
+   * Calculate air density — delegates to core/physics/air-density.ts (single source of truth).
+   * See that module for full documentation on station pressure requirements.
    */
   private calculateAirDensity(tempF: number, pressureMb: number, humidity: number): number {
-    const tempC = (tempF - 32) * 5/9;
-    const pressurePa = pressureMb * 100;
-
-    const svp = YardageModelEnhanced.MAGNUS_A * Math.exp(
-      (YardageModelEnhanced.MAGNUS_B * tempC) / (tempC + YardageModelEnhanced.MAGNUS_C)
-    );
-    const vaporPressure = (humidity / 100) * svp;
-
-    return (pressurePa - vaporPressure * 100) / (YardageModelEnhanced.GAS_CONSTANT_DRY * (tempC + 273.15)) +
-           vaporPressure * 100 / (YardageModelEnhanced.GAS_CONSTANT_VAPOR * (tempC + 273.15));
+    return calculateAirDensityPhysics(tempF, pressureMb, humidity);
   }
 
   calculateAdjustedYardage(targetYardage: number, skillLevel: SkillLevel, club: string): ShotResult {
@@ -414,6 +385,11 @@ export class YardageModelEnhanced {
     };
   }
 
+  // TODO: _calculate_spin_decay is currently unused — spin decay is not yet
+  // integrated into calculateAdjustedYardage. The method computes the correct
+  // exponential decay but its result is never fed back into _calculate_wind_effects
+  // (which still uses clubData.spin_rate directly). Integrating this would
+  // require passing decayed spin into the gyro_stability calculation.
   private _calculate_spin_decay(spin_rate: number, flight_time: number, ball_speed: number): number {
     const decay_rate = 0.12;
     const speed_factor = ball_speed / 123;
@@ -455,12 +431,17 @@ export class YardageModelEnhanced {
     pressure: number,
     humidity: number
   ): void {
-    this._validate_wind_inputs(wind_speed, wind_direction);
+    // Normalize 360° → 0° so compass readings of exactly North (360) don't
+    // trigger the validation error in _validate_wind_inputs. The modulo keeps
+    // the value in [0, 360) without changing any other valid input.
+    const normalizedDirection = wind_direction % 360;
+
+    this._validate_wind_inputs(wind_speed, normalizedDirection);
 
     this.temperature = temperature;
     this.altitude = altitude;
     this.windSpeed = wind_speed;
-    this.windDirection = wind_direction;
+    this.windDirection = normalizedDirection;
     this.pressure = pressure;
     this.humidity = humidity;
   }

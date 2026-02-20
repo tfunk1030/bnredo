@@ -1,23 +1,41 @@
 {
   "expo": {
-    "name": "bolt-expo-nativewind",
-    "slug": "bolt-expo-nativewind",
+    "name": "AICaddy Pro",
+    "slug": "aicaddy-pro",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
-    "userInterfaceStyle": "automatic",
+    "scheme": "aicaddypro",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0A"
+    },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.aicaddypro",
+      "supportsTablet": false,
+      "bundleIdentifier": "com.tfunk.aicaddypro",
       "buildNumber": "1",
+      "deploymentTarget": "16.0",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "This app uses your location to get local weather conditions for accurate shot calculations.",
-        "NSCameraUsageDescription": "This app uses the camera for course scanning features.",
+        "NSLocationWhenInUseUsageDescription": "AICaddy Pro uses your location to get local weather conditions for accurate shot calculations.",
+        "NSMotionUsageDescription": "AICaddy Pro uses your device compass to detect the direction you're aiming at for wind-adjusted shot calculations.",
         "UIBackgroundModes": [],
         "ITSAppUsesNonExemptEncryption": false
       }
+    },
+    "android": {
+      "package": "com.tfunk.aicaddypro",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0A0A0A"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -36,7 +54,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c0d3abcd-9d1b-4924-aeee-ee8b6dfeae45"
+        "projectId": "1d67024b-8cf9-4efe-8655-c9cbb3992393"
       }
     },
     "owner": "tfunk1030"

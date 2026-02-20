@@ -4,6 +4,27 @@
  * jest-expo handles most mocks via its preset, this file adds app-specific overrides
  */
 
+// Mock Supabase client - prevents "supabaseUrl is required" error in tests
+jest.mock('./src/lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
+      signInWithPassword: jest.fn(),
+      signUp: jest.fn(),
+      signOut: jest.fn(),
+      onAuthStateChange: jest.fn().mockReturnValue({ data: { subscription: { unsubscribe: jest.fn() } } }),
+    },
+    from: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }),
+  },
+}));
+
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
@@ -31,6 +52,19 @@ jest.mock('expo-location', () => ({
     Highest: 5,
     BestForNavigation: 6,
   },
+}));
+
+// Mock @shopify/react-native-skia
+jest.mock('@shopify/react-native-skia', () => ({
+  Canvas: ({ children }) => children,
+  Fill: ({ children }) => children,
+  Shader: () => null,
+  Skia: {
+    RuntimeEffect: {
+      Make: jest.fn().mockReturnValue({}),
+    },
+  },
+  vec: jest.fn((x, y) => ({ x, y })),
 }));
 
 // Mock expo-haptics

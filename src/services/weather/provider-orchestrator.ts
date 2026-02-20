@@ -28,8 +28,6 @@ import {
   getCachedWeather,
   cacheWeather,
   shouldUseCache,
-  shouldRefreshInBackground,
-  CachedWeather,
 } from './cache-manager';
 import { fetchTomorrowWeather, isTomorrowConfigured } from './tomorrow-adapter';
 import { fetchOpenMeteoWeather, getElevation } from './openmeteo-adapter';

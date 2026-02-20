@@ -1,3 +1,17 @@
+/**
+ * Shot Screen — Render-Matched Version
+ * 
+ * Implements Taylor's detailed render-matching guide:
+ * 1. SceneBackground (gradient + bottom fade)
+ * 2. RenderCard everywhere
+ * 3. Material System tokens (single source of truth)
+ * 4. Spacing rhythm (8/12/16 inside, 16 between)
+ * 5. Typography hierarchy
+ * 6. Full accessibility props on all controls
+ * 
+ * Feb 8, 2026
+ */
+
 import * as React from 'react';
 import {
   View,
@@ -5,12 +19,14 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import { Minus, Plus, ChevronDown, ChevronUp } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography, touchTargets, glass } from '@/src/constants/theme';
+import { SceneBackground, RenderCard } from '@/src/components/ui';
 import { WeatherCard } from '@/src/components/WeatherCard';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useClubBag } from '@/src/contexts/ClubBagContext';
@@ -18,9 +34,21 @@ import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
 import { YardageModelEnhanced, SkillLevel } from '@/src/core/models/yardagemodel';
 import { useHapticSlider } from '@/src/hooks/useHapticSlider';
 import { formatDistance } from '@/src/utils/unit-conversions';
+import {
+  materialColors,
+  spacing,
+  typography,
+  radii,
+  strokes,
+  controls,
+} from '@/src/constants/material-system';
+import { colors, cardGradient } from '@/src/constants/theme';
 
 export default function ShotScreen() {
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  // Card margins (32) + card padding (32) + track wrapper insets (32) = 96
+  const sliderTrackWidth = screenWidth - 96;
   const { weather } = useWeather();
   const { getRecommendedClub } = useClubBag();
   const { preferences } = useUserPreferences();
@@ -34,11 +62,9 @@ export default function ShotScreen() {
   const calculations = React.useMemo(() => {
     if (!weather) return null;
 
-    // Use YardageModelEnhanced for environmental calculations (same as wind calculator)
     const yardageModel = new YardageModelEnhanced();
     yardageModel.setBallModel('tour_premium');
     
-    // Set conditions with NO wind (shot calculator doesn't include wind)
     yardageModel.setConditions(
       weather.temperature,
       weather.altitude,
@@ -48,25 +74,26 @@ export default function ShotScreen() {
       weather.humidity
     );
 
-    // Use 7-iron as reference club (environmental factor doesn't depend on club choice)
     const envResult = yardageModel.calculateAdjustedYardage(
       targetYardage,
       SkillLevel.PROFESSIONAL,
       '7-iron'
     );
 
-    // Calculate environmental effect in yards (positive = plays longer)
+    // envEffectYards: how many yards shorter/longer the hole "plays like"
+    // If ball flies farther (thin air), envEffectYards is negative (plays shorter).
+    // adjustedYardage is what club distance to use.
     const envEffectYards = -(envResult.carryDistance - targetYardage);
-    
-    // Convert to percentage for display
     const totalAdjustmentPercent = (envEffectYards / targetYardage) * 100;
-    
-    // Adjusted yardage is the "plays like" distance
     const adjustedYardage = Math.round(targetYardage + envEffectYards);
+    const yardsDelta = Math.round(Math.abs(envEffectYards));
+    const playsLonger = envEffectYards > 0;
 
     return {
       adjustedYardage,
       totalAdjustmentPercent,
+      yardsDelta,
+      playsLonger,
     };
   }, [weather, targetYardage]);
 
@@ -75,7 +102,6 @@ export default function ShotScreen() {
     return getRecommendedClub(calculations.adjustedYardage);
   }, [calculations, getRecommendedClub]);
 
-  // Format distances based on user preferences
   const targetFormat = formatDistance(targetYardage, preferences.distanceUnit);
   const adjustedFormat = calculations ? formatDistance(calculations.adjustedYardage, preferences.distanceUnit) : null;
   const clubDistanceFormat = recommendedClub ? formatDistance(recommendedClub.customDistance, preferences.distanceUnit) : null;
@@ -85,28 +111,44 @@ export default function ShotScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <LinearGradient
-        colors={['rgba(35, 134, 54, 0.08)', 'transparent']}
-        style={styles.gradientOverlay}
-        pointerEvents="none"
-      />
+    <SceneBackground style={{ paddingTop: insets.top }}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* APP HEADER */}
+        <View style={styles.appHeader}>
+          <Text style={styles.appTitle}>AICaddy Pro</Text>
+          <Text style={styles.appSubtitle}>Shot Calculator</Text>
+        </View>
+
         <WeatherCard />
 
-        <View style={styles.yardageSection}>
+        {/* TARGET DISTANCE CARD */}
+        <RenderCard containerStyle={styles.cardSpacing} padding={spacing.md}>
           <Text style={styles.sectionLabel}>Target Distance</Text>
 
           <View style={styles.yardageDisplay}>
             <Text style={styles.yardageValue}>{targetFormat.value}</Text>
-            <Text style={styles.yardageUnit}>{targetFormat.label}</Text>
+            <Text style={styles.yardageUnit}> {targetFormat.label}</Text>
           </View>
 
+          {/* SLIDER */}
           <View style={styles.sliderContainer}>
+            {/* Gradient track overlay — active portion only */}
+            <View style={styles.sliderTrackWrapper} pointerEvents="none">
+              <View style={styles.sliderTrackMax} />
+              <LinearGradient
+                colors={[colors.primaryDark, colors.primary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[
+                  styles.sliderTrackMin,
+                  { width: ((targetYardage - 50) / 300) * sliderTrackWidth },
+                ]}
+              />
+            </View>
             <Slider
               style={styles.slider}
               minimumValue={50}
@@ -118,16 +160,17 @@ export default function ShotScreen() {
                 setTargetYardage(value);
               }}
               onSlidingComplete={resetSliderHaptic}
-              minimumTrackTintColor={colors.primary}
-              maximumTrackTintColor={colors.border}
+              minimumTrackTintColor="transparent"
+              maximumTrackTintColor="transparent"
               thumbTintColor={colors.primary}
-              accessibilityLabel={`Target distance: ${targetFormat.value} ${targetFormat.label}`}
               accessibilityRole="adjustable"
+              accessibilityLabel={`Target distance: ${targetYardage} ${targetFormat.label}`}
+              accessibilityHint="Swipe up or down to adjust target distance"
               accessibilityValue={{
                 min: 50,
                 max: 350,
                 now: targetYardage,
-                text: `${targetFormat.value} ${targetFormat.label}`,
+                text: `${targetYardage} ${targetFormat.label}`,
               }}
             />
             <View style={styles.sliderLabels}>
@@ -136,294 +179,317 @@ export default function ShotScreen() {
             </View>
           </View>
 
+          {/* INCREMENT BUTTONS */}
           <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.adjustButton}
-              onPress={() => handleIncrement(-5)}
-              accessibilityRole="button"
-              accessibilityLabel="Decrease distance by 5 yards"
-              accessibilityHint="Double tap to subtract 5 yards from target distance"
-            >
-              <Minus color={colors.text} size={20} />
-              <Text style={styles.adjustButtonText}>5</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.adjustButton}
-              onPress={() => handleIncrement(-1)}
-              accessibilityRole="button"
-              accessibilityLabel="Decrease distance by 1 yard"
-              accessibilityHint="Double tap to subtract 1 yard from target distance"
-            >
-              <Minus color={colors.text} size={20} />
-              <Text style={styles.adjustButtonText}>1</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.adjustButton}
-              onPress={() => handleIncrement(1)}
-              accessibilityRole="button"
-              accessibilityLabel="Increase distance by 1 yard"
-              accessibilityHint="Double tap to add 1 yard to target distance"
-            >
-              <Plus color={colors.text} size={20} />
-              <Text style={styles.adjustButtonText}>1</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.adjustButton}
-              onPress={() => handleIncrement(5)}
-              accessibilityRole="button"
-              accessibilityLabel="Increase distance by 5 yards"
-              accessibilityHint="Double tap to add 5 yards to target distance"
-            >
-              <Plus color={colors.text} size={20} />
-              <Text style={styles.adjustButtonText}>5</Text>
-            </TouchableOpacity>
+            {[-5, -1, 1, 5].map((amount) => (
+              <Pressable
+                key={amount}
+                onPress={() => handleIncrement(amount)}
+                accessibilityRole="button"
+                accessibilityLabel={`${amount > 0 ? 'Add' : 'Subtract'} ${Math.abs(amount)} ${Math.abs(amount) === 1 ? 'yard' : 'yards'}`}
+                accessibilityHint={`${amount > 0 ? 'Increases' : 'Decreases'} target distance by ${Math.abs(amount)}`}
+              >
+                {({ pressed }) => (
+                  <View
+                    style={[
+                      styles.adjustButton,
+                      { borderColor: pressed ? controls.pressed.stroke : controls.normal.stroke },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={pressed ? controls.pressed.gradient.colors : controls.normal.gradient.colors}
+                      start={controls.normal.gradient.start}
+                      end={controls.normal.gradient.end}
+                      style={styles.adjustButtonGradient}
+                    >
+                      {amount < 0 ? (
+                        <Minus color="rgba(255,255,255,0.85)" size={18} />
+                      ) : (
+                        <Plus color="rgba(255,255,255,0.85)" size={18} />
+                      )}
+                      <Text style={styles.adjustButtonText}>{Math.abs(amount)}</Text>
+                    </LinearGradient>
+                  </View>
+                )}
+              </Pressable>
+            ))}
           </View>
-        </View>
+        </RenderCard>
 
+        {/* PLAYS LIKE CARD */}
         {calculations && (
-          <View style={styles.resultSection}>
-            <Text style={styles.playsLikeLabel}>Plays Like</Text>
-            <Text style={styles.playsLikeValue}>
-              {adjustedFormat?.value}
+          <RenderCard containerStyle={styles.cardSpacing} padding={spacing.md}>
+            <Text style={styles.sectionLabel}>Plays Like</Text>
+            <View style={styles.playsLikeRow}>
+              <Text style={styles.playsLikeValue}>{adjustedFormat?.value}</Text>
               <Text style={styles.playsLikeUnit}> {adjustedFormat?.label}</Text>
-            </Text>
+            </View>
 
+            {/* RECOMMENDED CLUB */}
             {recommendedClub && (
               <View style={styles.clubRecommendation}>
                 <Text style={styles.clubLabel}>Recommended Club</Text>
                 <Text style={styles.clubName}>{recommendedClub.name}</Text>
                 <Text style={styles.clubDistance}>
-                  ({clubDistanceFormat?.value} {clubDistanceFormat?.shortLabel} club)
+                  ({clubDistanceFormat?.value} <Text style={{ color: colors.textAccent }}>{clubDistanceFormat?.shortLabel}</Text> club)
                 </Text>
               </View>
             )}
 
+            {/* BREAKDOWN TOGGLE */}
             <TouchableOpacity
               style={styles.breakdownToggle}
               onPress={() => setShowBreakdown(!showBreakdown)}
               accessibilityRole="button"
-              accessibilityLabel={`${showBreakdown ? 'Hide' : 'Show'} calculation breakdown`}
+              accessibilityLabel={`${showBreakdown ? 'Hide' : 'Show'} environmental breakdown`}
               accessibilityState={{ expanded: showBreakdown }}
-              accessibilityHint="Double tap to toggle breakdown details"
             >
               <Text style={styles.breakdownToggleText}>
                 {showBreakdown ? 'Hide' : 'Show'} Breakdown
               </Text>
               {showBreakdown ? (
-                <ChevronUp color={colors.textSecondary} size={16} />
+                <ChevronUp color={typography.label.color} size={16} />
               ) : (
-                <ChevronDown color={colors.textSecondary} size={16} />
+                <ChevronDown color={typography.label.color} size={16} />
               )}
             </TouchableOpacity>
 
+            {/* BREAKDOWN */}
             {showBreakdown && (
               <View style={styles.breakdown}>
                 <View style={styles.breakdownRow}>
-                  <Text style={styles.breakdownLabel}>Environmental Effect</Text>
-                  <Text style={styles.breakdownSubtext}>
-                    (includes air density and altitude)
-                  </Text>
-                  <Text style={styles.breakdownValue}>
-                    {calculations.totalAdjustmentPercent > 0 ? '+' : ''}
-                    {calculations.totalAdjustmentPercent.toFixed(1)}%
-                  </Text>
+                  <View>
+                    <Text style={styles.breakdownLabel}>Air Density &amp; Altitude</Text>
+                    <Text style={styles.breakdownSubtext}>
+                      {calculations.playsLonger
+                        ? 'Dense air — ball carries shorter'
+                        : 'Thin air — ball carries farther'}
+                    </Text>
+                  </View>
+                  <View style={styles.breakdownValueGroup}>
+                    <Text style={styles.breakdownValue}>
+                      {calculations.playsLonger ? '+' : '-'}{calculations.yardsDelta} <Text style={{ color: colors.textAccent }}>yds</Text>
+                    </Text>
+                    <Text style={styles.breakdownPct}>
+                      ({calculations.totalAdjustmentPercent > 0 ? '+' : ''}{calculations.totalAdjustmentPercent.toFixed(1)}%)
+                    </Text>
+                  </View>
                 </View>
               </View>
             )}
-          </View>
+          </RenderCard>
         )}
       </ScrollView>
-    </View>
+    </SceneBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+  // APP HEADER
+  appHeader: {
+    alignItems: 'center',
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-    zIndex: 0,
+  appTitle: {
+    color: materialColors.primaryVibrant,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
+  appSubtitle: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 11,
+    fontWeight: '400',
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: spacing.xxl,
+    paddingBottom: 32,
   },
-  yardageSection: {
-    backgroundColor: colors.surface,
+  
+  // SPACING RHYTHM: 16 between cards
+  cardSpacing: {
     marginHorizontal: spacing.md,
-    marginTop: spacing.lg,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    marginTop: spacing.betweenCards,
   },
+
+  // TARGET DISTANCE SECTION
   sectionLabel: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '500',
+    ...typography.sectionTitle,
     textAlign: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   yardageDisplay: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
   },
   yardageValue: {
-    ...typography.largeTitle,
-    color: colors.text,
+    ...typography.large,
   },
   yardageUnit: {
-    color: colors.textSecondary,
-    fontSize: 18,
-    marginLeft: spacing.xs,
+    ...typography.unit,
+    color: colors.textAccent,  // Unit labels → green accent
   },
+
+  // SLIDER
   sliderContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
+    position: 'relative',
   },
   slider: {
     width: '100%',
-    height: 40,
+    height: 36,
+  },
+  // Gradient track overlay (absolutely positioned behind slider)
+  sliderTrackWrapper: {
+    position: 'absolute',
+    left: 16,           // Inset to match slider thumb padding
+    right: 16,
+    top: 16,            // Center 4px track in 36px slider height: (36-4)/2=16
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  sliderTrackMax: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 4,
+    backgroundColor: strokes.outer,
+    borderRadius: 2,
+  },
+  sliderTrackMin: {
+    height: 4,
+    borderRadius: 2,
   },
   sliderLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: 4,
+    marginBottom: spacing.sm,
   },
   sliderLabel: {
-    color: colors.textMuted,
-    fontSize: 11,
+    ...typography.label,
   },
+
+  // INCREMENT BUTTONS
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: spacing.md,
+    gap: spacing.xs,
   },
   adjustButton: {
+    borderRadius: radii.control,
+    overflow: 'hidden',
+    borderWidth: 0.5,
+    borderColor: controls.normal.stroke,
+  },
+  adjustButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surfaceElevated,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     gap: 4,
-    minWidth: 64,
-    minHeight: touchTargets.minimum,
+    minWidth: 56,
+    minHeight: 44,
     justifyContent: 'center',
   },
   adjustButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.button,
   },
-  resultSection: {
-    backgroundColor: glass.cardTint.success,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.lg,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  playsLikeLabel: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
-    marginBottom: spacing.xs,
+
+  // PLAYS LIKE
+  playsLikeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
   playsLikeValue: {
-    fontSize: 56,
+    fontSize: 72,
     fontWeight: '700',
-    color: colors.primary,
-    textAlign: 'center',
+    lineHeight: 76,
+    color: materialColors.primaryVibrant,
   },
   playsLikeUnit: {
-    fontSize: 20,
-    fontWeight: '400',
+    fontSize: 18,
+    fontWeight: '500',
+    lineHeight: 22,
+    marginBottom: 10,         // aligns "yards" off the number baseline
+    color: colors.textAccent,
   },
+
+  // RECOMMENDED CLUB
   clubRecommendation: {
     alignItems: 'center',
-    marginTop: spacing.lg,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 0.5,
+    borderTopColor: strokes.inner,
   },
   clubLabel: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    marginBottom: spacing.xs,
+    ...typography.label,
+    marginBottom: 4,
   },
   clubName: {
-    color: colors.accent,
-    fontSize: 24,
-    fontWeight: '700',
+    color: materialColors.primaryVibrant,
+    fontSize: 22,
+    fontWeight: '600',
+    letterSpacing: -0.5,
   },
   clubDistance: {
-    color: colors.textMuted,
-    fontSize: 13,
+    ...typography.label,
     marginTop: 4,
   },
+
+  // BREAKDOWN TOGGLE
   breakdownToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     gap: spacing.xs,
   },
   breakdownToggleText: {
-    color: colors.textSecondary,
-    fontSize: 13,
+    ...typography.sectionTitle,
   },
+
+  // BREAKDOWN
   breakdown: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 0.5,
+    borderTopColor: strokes.inner,
   },
   breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
+    alignItems: 'center',
   },
   breakdownLabel: {
-    color: colors.textSecondary,
-    fontSize: 14,
+    ...typography.small,
+    marginBottom: 2,
   },
   breakdownSubtext: {
-    color: colors.textMuted,
-    fontSize: 12,
+    ...typography.label,
     fontStyle: 'italic',
-    marginTop: 2,
+  },
+  breakdownValueGroup: {
+    alignItems: 'flex-end',
   },
   breakdownValue: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.body,
   },
-  breakdownTotal: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  breakdownTotalLabel: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  breakdownTotalValue: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
+  breakdownPct: {
+    ...typography.label,
+    marginTop: 2,
   },
 });

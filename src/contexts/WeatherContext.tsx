@@ -9,6 +9,7 @@ import {
   fetchWeather as fetchWeatherOrchestrated,
   getCachedWeather as getOrchCachedWeather,
   WeatherError,
+  getDistanceKm,
 } from '@/src/services/weather';
 
 // Re-export the old interface for backward compatibility
@@ -81,6 +82,13 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isOffline, setIsOffline] = React.useState(false);
+  const lastLocationRef = React.useRef<{ lat: number; lng: number } | null>(null);
+  const weatherRef = React.useRef<WeatherData | null>(null);
+
+  // Keep ref in sync with state
+  React.useEffect(() => {
+    weatherRef.current = weather;
+  }, [weather]);
 
   // Build settings from user preferences
   const weatherSettings: WeatherSettings = React.useMemo(() => ({
@@ -90,11 +98,7 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
     fallbackOrder: preferences.weatherProvider?.fallbackOrder ?? ['tomorrow', 'openmeteo'],
   }), [preferences.weatherProvider]);
 
-  React.useEffect(() => {
-    loadWeather();
-  }, [weatherSettings.enableMultiProvider]);
-
-  const loadWeather = async () => {
+  const loadWeather = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -136,6 +140,33 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
         accuracy: Location.Accuracy.Balanced,
       });
 
+      // Check if location changed significantly (>5km) to avoid unnecessary fetches
+      const lastLoc = lastLocationRef.current;
+      const currentWeather = weatherRef.current;
+      if (lastLoc && currentWeather && !currentWeather.isManualOverride) {
+        const distance = getDistanceKm(
+          lastLoc.lat,
+          lastLoc.lng,
+          location.coords.latitude,
+          location.coords.longitude
+        );
+        
+        // If location hasn't changed much and weather is recent, skip fetch
+        if (distance < 5) {
+          const age = Date.now() - new Date(currentWeather.observationTime).getTime();
+          if (age < 5 * 60 * 1000) { // 5 minutes
+            setIsLoading(false);
+            return;
+          }
+        }
+      }
+
+      // Update location tracking
+      lastLocationRef.current = {
+        lat: location.coords.latitude,
+        lng: location.coords.longitude,
+      };
+
       // Fetch weather using orchestrator
       const weatherData = await fetchWeatherOrchestrated(
         location.coords.latitude,
@@ -169,12 +200,16 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [weatherSettings]);
+
+  React.useEffect(() => {
+    loadWeather();
+  }, [loadWeather]);
 
   const refreshWeather = React.useCallback(async () => {
     await AsyncStorage.removeItem(MANUAL_OVERRIDE_KEY);
     await loadWeather();
-  }, []);
+  }, [loadWeather]);
 
   const updateManualWeather = React.useCallback(async (updates: Partial<WeatherData>) => {
     const newWeather: WeatherData = {

@@ -10,16 +10,18 @@ import {
   AccessibilityInfo,
   TextInput,
   Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Lock, Wind, Navigation, Target, Minus, Plus, AlertCircle, Edit3, Check, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, borderRadius, typography, touchTargets, glass } from '@/src/constants/theme';
+import { colors, spacing, borderRadius, typography, touchTargets, glass, cardGradient } from '@/src/constants/theme';
+import { SceneBackground } from '@/src/components/ui';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
-import { getWindDirectionLabel } from '@/src/services/weather-service';
+import { getWindDirectionLabel } from '@/src/services/weather/utils';
 import { WindResultsModal } from '@/src/components/WindResultsModal';
 import { CompassDisplay } from '@/src/components/CompassDisplay';
 import { useCompassHeading } from '@/src/hooks/useCompassHeading';
@@ -164,9 +166,15 @@ export default function WindScreen() {
     const windDirection = parseFloat(manualWindDirection);
 
     if (!isNaN(windSpeed) && !isNaN(windGust) && !isNaN(windDirection)) {
+      const clampedWindSpeed = Math.max(0, Math.min(100, windSpeed));
+      const clampedWindGust = Math.max(0, Math.min(150, windGust));
+      
+      // Ensure gust is at least as strong as sustained wind
+      const validatedGust = Math.max(clampedWindGust, clampedWindSpeed);
+      
       await updateManualWeather({
-        windSpeed: Math.max(0, Math.min(100, windSpeed)),
-        windGust: Math.max(0, Math.min(150, windGust)),
+        windSpeed: clampedWindSpeed,
+        windGust: validatedGust,
         windDirection: ((windDirection % 360) + 360) % 360,
       });
       setShowManualInput(false);
@@ -176,12 +184,7 @@ export default function WindScreen() {
 
   if (!preferences.isPremium) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <LinearGradient
-          colors={['rgba(35, 134, 54, 0.08)', 'transparent']}
-          style={styles.gradientOverlay}
-          pointerEvents="none"
-        />
+      <SceneBackground style={{ paddingTop: insets.top }}>
         <View style={styles.lockedContainer}>
           <View style={styles.lockIconContainer}>
             <Lock color={colors.accent} size={64} strokeWidth={1.5} />
@@ -217,26 +220,19 @@ export default function WindScreen() {
           >
             <Text style={styles.upgradeButtonText}>Unlock Premium</Text>
           </TouchableOpacity>
-          <Text style={styles.devNote}>(Dev: Tap to simulate premium)</Text>
+          {__DEV__ && <Text style={styles.devNote}>(Dev: Tap to simulate premium)</Text>}
         </View>
-      </View>
+      </SceneBackground>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <LinearGradient
-        colors={['rgba(35, 134, 54, 0.08)', 'transparent']}
-        style={styles.gradientOverlay}
-        pointerEvents="none"
-      />
+    <SceneBackground style={{ paddingTop: insets.top }}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.subtitle}>Point device at target, then lock</Text>
-
         <View style={styles.compassSection}>
           <CompassDisplay
             heading={heading}
@@ -248,12 +244,12 @@ export default function WindScreen() {
         </View>
 
         {!hasPermission && (
-          <View style={styles.permissionWarning}>
+          <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.permissionWarning}>
             <AlertCircle color={colors.warning} size={16} />
             <Text style={styles.permissionWarningText}>
               Compass access required for accurate readings
             </Text>
-          </View>
+          </LinearGradient>
         )}
 
         {weather ? (
@@ -264,30 +260,34 @@ export default function WindScreen() {
             accessibilityLabel={`Wind ${windSpeedFormat.value} ${windSpeedFormat.shortLabel}, gusts ${windGustFormat.value} ${windGustFormat.shortLabel}. Tap to enter manual wind`}
             accessibilityHint="Double tap to enter wind data manually"
           >
+            <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={[StyleSheet.absoluteFillObject, { borderRadius: borderRadius.md }]} />
             <View style={styles.windInfoItem}>
               <Wind color={colors.accent} size={16} />
               <Text style={styles.windInfoText}>
-                {windSpeedFormat.value} {windSpeedFormat.shortLabel} {getWindDirectionLabel(weather.windDirection)}
+                {windSpeedFormat.value} <Text style={styles.windUnit}>{windSpeedFormat.shortLabel}</Text> {getWindDirectionLabel(weather.windDirection)}
               </Text>
             </View>
             <View style={styles.windInfoDivider} />
             <View style={styles.windInfoItem}>
               <Text style={styles.windInfoLabel}>Gusts:</Text>
-              <Text style={styles.windInfoText}>{windGustFormat.value} {windGustFormat.shortLabel}</Text>
+              <Text style={styles.windInfoText}>{windGustFormat.value} <Text style={styles.windUnit}>{windGustFormat.shortLabel}</Text></Text>
             </View>
             <View style={styles.windInfoDivider} />
-            <Edit3 color={colors.textSecondary} size={14} />
+            <View style={styles.editWindHint}>
+              <Edit3 color={colors.textSecondary} size={14} />
+              <Text style={styles.editWindText}>Edit</Text>
+            </View>
           </TouchableOpacity>
         ) : (
-          <View style={styles.noWeatherBar}>
+          <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.noWeatherBar}>
             <AlertCircle color={colors.textMuted} size={16} />
             <Text style={styles.noWeatherText}>Loading weather data...</Text>
-          </View>
+          </LinearGradient>
         )}
 
-        <View style={styles.distanceSection}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.distanceSection}>
           <Text style={styles.distanceLabel}>Target Distance</Text>
-          <Text style={styles.distanceValue}>{distanceFormat.value} {distanceFormat.shortLabel}</Text>
+          <Text style={styles.distanceValue}>{distanceFormat.value} <Text style={styles.distanceUnit}>{distanceFormat.shortLabel}</Text></Text>
 
           <View style={styles.sliderContainer}>
             <TouchableOpacity
@@ -340,33 +340,32 @@ export default function WindScreen() {
             <Text style={styles.sliderLabel}>50</Text>
             <Text style={styles.sliderLabel}>350</Text>
           </View>
-        </View>
-      </ScrollView>
 
-      <TouchableOpacity
-        onPress={handleLock}
-        disabled={!weather}
-        accessibilityRole="button"
-        accessibilityLabel="Lock target direction"
-        accessibilityHint={weather ? "Double tap to lock current compass heading as target" : "Weather data required to lock target"}
-        accessibilityState={{ disabled: !weather }}
-        activeOpacity={0.8}
-      >
-        <Animated.View
-          style={[
-            styles.lockButton,
-            { bottom: 40 + insets.bottom },
-            preferences.handPreference === 'left' && styles.lockButtonLeft,
-            !weather && styles.lockButtonDisabled,
-            { transform: [{ scale: lockButtonScale }] },
-          ]}
-        >
-          <Target color={weather ? colors.white : colors.textMuted} size={28} />
-          <Text style={[styles.lockButtonText, !weather && styles.lockButtonTextDisabled]}>
-            Lock Target
-          </Text>
-        </Animated.View>
-      </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleLock}
+            disabled={!weather}
+            accessibilityRole="button"
+            accessibilityLabel="Calculate wind effect"
+            accessibilityHint={weather ? "Double tap to lock compass heading and calculate wind effect" : "Weather data required to calculate"}
+            accessibilityState={{ disabled: !weather }}
+            activeOpacity={0.8}
+            style={styles.calculateButton}
+          >
+            <Animated.View
+              style={[
+                styles.calculateButtonInner,
+                !weather && styles.calculateButtonDisabled,
+                { transform: [{ scale: lockButtonScale }] },
+              ]}
+            >
+              <Target color={weather ? colors.white : colors.textMuted} size={20} />
+              <Text style={[styles.calculateButtonText, !weather && styles.lockButtonTextDisabled]}>
+                Calculate
+              </Text>
+            </Animated.View>
+          </TouchableOpacity>
+        </LinearGradient>
+      </ScrollView>
 
       {/* Manual Wind Input Modal */}
       <Modal
@@ -375,7 +374,10 @@ export default function WindScreen() {
         transparent={true}
         onRequestClose={() => setShowManualInput(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={[styles.modalContent, { paddingBottom: insets.bottom + spacing.lg }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Manual Wind Entry</Text>
@@ -438,7 +440,7 @@ export default function WindScreen() {
               <Text style={styles.submitButtonText}>Apply</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <WindResultsModal
@@ -447,25 +449,22 @@ export default function WindScreen() {
         targetYardage={targetYardage}
         windAngle={windAngleRelativeToTarget}
       />
-    </View>
+    </SceneBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-    zIndex: 0,
-  },
   scrollView: {
     flex: 1,
+  },
+  screenTitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 2,
+    letterSpacing: -0.5,
   },
   scrollContent: {
     paddingHorizontal: spacing.md,
@@ -481,7 +480,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
-    backgroundColor: glass.cardTint.premium,
   },
   lockIconContainer: {
     width: 120,
@@ -556,10 +554,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.warning,
+    overflow: 'hidden',
   },
   permissionWarningText: {
     color: colors.warning,
@@ -571,12 +569,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.surface,
     marginTop: spacing.md,
     padding: spacing.md,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden',
   },
   noWeatherText: {
     color: colors.textMuted,
@@ -586,7 +584,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+    overflow: 'hidden',
     marginTop: spacing.md,
     padding: spacing.md,
     borderRadius: borderRadius.md,
@@ -613,13 +611,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  editWindHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  editWindText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '500',
+  },
   distanceSection: {
     marginTop: spacing.lg,
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden',
   },
   distanceLabel: {
     color: colors.textSecondary,
@@ -661,6 +669,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  windUnit: {
+    color: colors.textAccent,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  distanceUnit: {
+    color: colors.textAccent,
+    fontSize: 14,
+    fontWeight: '500',
+  },
   sliderLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -671,16 +689,18 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 11,
   },
-  lockButton: {
-    position: 'absolute',
-    right: spacing.lg,
-    backgroundColor: colors.primary,
+  calculateButton: {
+    marginTop: spacing.md,
+  },
+  calculateButtonInner: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    backgroundColor: colors.primary,
     borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     ...Platform.select({
       ios: {
         shadowColor: colors.black,
@@ -693,21 +713,17 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  lockButtonLeft: {
-    right: undefined,
-    left: spacing.lg,
-  },
-  lockButtonDisabled: {
+  calculateButtonDisabled: {
     backgroundColor: colors.surfaceElevated,
     opacity: 0.5,
   },
-  lockButtonText: {
+  lockButtonTextDisabled: {
+    color: colors.textMuted,
+  },
+  calculateButtonText: {
     color: colors.white,
     fontSize: 16,
     fontWeight: '700',
-  },
-  lockButtonTextDisabled: {
-    color: colors.textMuted,
   },
   // Modal styles
   modalOverlay: {

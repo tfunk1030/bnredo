@@ -44,3 +44,6 @@ export {
 
 // Retry utilities
 export { withRetry, fetchWithTimeout } from './retry-strategy';
+
+// Utility functions
+export { getWindDirectionLabel, getDistanceKm } from './utils';

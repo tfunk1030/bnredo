@@ -8,6 +8,8 @@ import {
   TextInput,
   Switch,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -19,12 +21,13 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight, Crown, Check, Cloud, AlertCircle, User, LogOut } from 'lucide-react-native';
 import { getProviderStatus } from '@/src/services/weather';
-import { colors, spacing, borderRadius, typography, touchTargets, animation, glass } from '@/src/constants/theme';
+import { colors, spacing, borderRadius, typography, touchTargets, animation, glass, cardGradient } from '@/src/constants/theme';
 import { AnimatedCollapsible } from '@/src/components/ui';
 import { useReduceMotion } from '@/src/hooks/useReduceMotion';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
 import { useClubBag } from '@/src/contexts/ClubBagContext';
+import { supabase } from '@/src/lib/supabase';
 
 type OptionValue = string;
 
@@ -43,14 +46,34 @@ export default function SettingsScreen() {
   const [password, setPassword] = React.useState('');
   const [authMode, setAuthMode] = React.useState<'signin' | 'signup'>('signin');
   const [authError, setAuthError] = React.useState<string | null>(null);
+  const [authSuccess, setAuthSuccess] = React.useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = React.useState(false);
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setAuthError('Enter your email address first');
+      return;
+    }
+    setAuthError(null);
+    setAuthSubmitting(true);
+    if (!supabase) { setAuthError("Auth not configured"); setAuthSubmitting(false); return; }
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    setAuthSubmitting(false);
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setAuthSuccess('Password reset email sent — check your inbox');
+    }
+  };
 
   const handleAuth = async () => {
     if (!email || !password) {
       setAuthError('Please enter email and password');
+      setAuthSuccess(null);
       return;
     }
     setAuthError(null);
+    setAuthSuccess(null);
     setAuthSubmitting(true);
     
     const result = authMode === 'signin' 
@@ -65,7 +88,7 @@ export default function SettingsScreen() {
       setEmail('');
       setPassword('');
       if (authMode === 'signup') {
-        setAuthError('Check your email to confirm your account');
+        setAuthSuccess('Check your email to confirm your account');
       }
     }
   };
@@ -141,18 +164,22 @@ export default function SettingsScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <LinearGradient
         colors={['rgba(35, 134, 54, 0.08)', 'transparent']}
         style={styles.gradientOverlay}
         pointerEvents="none"
       />
       <ScrollView
+        keyboardShouldPersistTaps="handled"
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
         {/* Account Section */}
-        <View style={[styles.section, { marginTop: spacing.lg }]}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={[styles.section, { marginTop: spacing.lg }]}>
           <Text style={styles.sectionTitle}>Account</Text>
           
           {authLoading ? (
@@ -202,6 +229,10 @@ export default function SettingsScreen() {
                 <Text style={styles.authError}>{authError}</Text>
               )}
               
+              {authSuccess && (
+                <Text style={styles.authSuccess}>{authSuccess}</Text>
+              )}
+              
               <TouchableOpacity
                 style={[styles.authButton, authSubmitting && styles.authButtonDisabled]}
                 onPress={handleAuth}
@@ -218,11 +249,23 @@ export default function SettingsScreen() {
                 )}
               </TouchableOpacity>
               
+              {authMode === 'signin' && (
+                <TouchableOpacity
+                  style={styles.authToggle}
+                  onPress={handleForgotPassword}
+                  accessibilityRole="button"
+                  accessibilityLabel="Forgot password"
+                >
+                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
                 style={styles.authToggle}
                 onPress={() => {
                   setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
                   setAuthError(null);
+                  setAuthSuccess(null);
                 }}
                 accessibilityRole="button"
               >
@@ -238,12 +281,10 @@ export default function SettingsScreen() {
               </Text>
             </View>
           )}
-        </View>
+        </LinearGradient>
 
-        <View style={[
-          styles.section,
-          preferences.isPremium && { backgroundColor: glass.cardTint.premiumActive }
-        ]}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.section}>
+          {preferences.isPremium && <View style={[StyleSheet.absoluteFillObject, { backgroundColor: glass.cardTint.premiumActive }]} pointerEvents="none" />}
           <View style={styles.premiumBanner}>
             <View style={styles.premiumHeader}>
               <Crown
@@ -288,9 +329,9 @@ export default function SettingsScreen() {
           {__DEV__ && (
             <Text style={styles.devNote}>(Dev toggle for testing)</Text>
           )}
-        </View>
+        </LinearGradient>
 
-        <View style={styles.section}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.section}>
           <Text style={styles.sectionTitle}>Units</Text>
 
           {renderOption(
@@ -322,9 +363,9 @@ export default function SettingsScreen() {
             ],
             value => updatePreferences({ windSpeedUnit: value as 'mph' | 'kmh' })
           )}
-        </View>
+        </LinearGradient>
 
-        <View style={styles.section}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.section}>
           <Text style={styles.sectionTitle}>Hand Preference</Text>
 
           {renderOption(
@@ -339,9 +380,9 @@ export default function SettingsScreen() {
           <Text style={styles.hint}>
             Affects lock button placement in Wind Calculator
           </Text>
-        </View>
+        </LinearGradient>
 
-        <View style={styles.section}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.section}>
           <Text style={styles.sectionTitle}>Weather Data</Text>
 
           {(() => {
@@ -437,9 +478,9 @@ export default function SettingsScreen() {
               );
             }
           })()}
-        </View>
+        </LinearGradient>
 
-        <View style={styles.section}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.section}>
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={toggleClubBag}
@@ -510,7 +551,7 @@ export default function SettingsScreen() {
                       accessibilityLabel={`Edit ${club.name} distance, currently ${club.customDistance} yards`}
                     >
                       <Text style={styles.distanceText}>
-                        {club.customDistance} yds
+                        {club.customDistance} <Text style={styles.distanceUnit}>yds</Text>
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -518,7 +559,7 @@ export default function SettingsScreen() {
               ))}
             </View>
           </AnimatedCollapsible>
-        </View>
+        </LinearGradient>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>AICaddy Pro v1.0.0</Text>
@@ -527,7 +568,7 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -551,13 +592,13 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   section: {
-    backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
     marginBottom: spacing.md,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -691,6 +732,10 @@ const styles = StyleSheet.create({
   },
   distanceText: {
     color: colors.text,
+    fontSize: 14,
+  },
+  distanceUnit: {
+    color: colors.textAccent,
     fontSize: 14,
   },
   distanceInput: {
@@ -837,5 +882,15 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontSize: 13,
     textAlign: 'center',
+  },
+  authSuccess: {
+    color: colors.primary,
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  forgotPasswordText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    textAlign: 'right',
   },
 });

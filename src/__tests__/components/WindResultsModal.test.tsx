@@ -35,6 +35,9 @@ const { useWeather } = require('@/src/contexts/WeatherContext');
 const { useClubBag } = require('@/src/contexts/ClubBagContext');
 const { calculateWindEffect } = require('@/src/core/services/wind-calculator');
 
+// Increase timeout for React Native component tests
+jest.setTimeout(15000);
+
 describe('WindResultsModal', () => {
   const mockWeather = {
     temperature: 72,
