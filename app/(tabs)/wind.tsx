@@ -233,9 +233,6 @@ export default function WindScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.screenTitle}>Wind Calculator</Text>
-        <Text style={styles.subtitle}>Point device at target, then lock</Text>
-
         <View style={styles.compassSection}>
           <CompassDisplay
             heading={heading}
