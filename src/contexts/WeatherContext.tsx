@@ -83,6 +83,12 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = React.useState<string | null>(null);
   const [isOffline, setIsOffline] = React.useState(false);
   const lastLocationRef = React.useRef<{ lat: number; lng: number } | null>(null);
+  const weatherRef = React.useRef<WeatherData | null>(null);
+
+  // Keep ref in sync with state
+  React.useEffect(() => {
+    weatherRef.current = weather;
+  }, [weather]);
 
   // Build settings from user preferences
   const weatherSettings: WeatherSettings = React.useMemo(() => ({
@@ -136,7 +142,8 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
 
       // Check if location changed significantly (>5km) to avoid unnecessary fetches
       const lastLoc = lastLocationRef.current;
-      if (lastLoc && weather && !weather.isManualOverride) {
+      const currentWeather = weatherRef.current;
+      if (lastLoc && currentWeather && !currentWeather.isManualOverride) {
         const distance = getDistanceKm(
           lastLoc.lat,
           lastLoc.lng,
@@ -146,7 +153,7 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
         
         // If location hasn't changed much and weather is recent, skip fetch
         if (distance < 5) {
-          const age = Date.now() - new Date(weather.observationTime).getTime();
+          const age = Date.now() - new Date(currentWeather.observationTime).getTime();
           if (age < 5 * 60 * 1000) { // 5 minutes
             setIsLoading(false);
             return;
@@ -193,7 +200,7 @@ export function WeatherProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [weather, weatherSettings]);
+  }, [weatherSettings]);
 
   React.useEffect(() => {
     loadWeather();
