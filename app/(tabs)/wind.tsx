@@ -680,8 +680,8 @@ const styles = StyleSheet.create({
   },
   distanceUnit: {
     color: colors.textAccent,
-    fontSize: 36,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '500',
   },
   sliderLabels: {
     flexDirection: 'row',

@@ -20,6 +20,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Pressable,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -45,6 +46,9 @@ import { colors, cardGradient } from '@/src/constants/theme';
 
 export default function ShotScreen() {
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  // Card margins (32) + card padding (32) + track wrapper insets (32) = 96
+  const sliderTrackWidth = screenWidth - 96;
   const { weather } = useWeather();
   const { getRecommendedClub } = useClubBag();
   const { preferences } = useUserPreferences();
@@ -141,7 +145,7 @@ export default function ShotScreen() {
                 end={{ x: 1, y: 0 }}
                 style={[
                   styles.sliderTrackMin,
-                  { width: `${((targetYardage - 50) / 300) * 100}%` as any },
+                  { width: ((targetYardage - 50) / 300) * sliderTrackWidth },
                 ]}
               />
             </View>
