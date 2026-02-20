@@ -21,7 +21,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight, Crown, Check, Cloud, AlertCircle, User, LogOut } from 'lucide-react-native';
 import { getProviderStatus } from '@/src/services/weather';
-import { colors, spacing, borderRadius, typography, touchTargets, animation, glass } from '@/src/constants/theme';
+import { colors, spacing, borderRadius, typography, touchTargets, animation, glass, cardGradient } from '@/src/constants/theme';
 import { AnimatedCollapsible } from '@/src/components/ui';
 import { useReduceMotion } from '@/src/hooks/useReduceMotion';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -179,7 +179,7 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Account Section */}
-        <View style={[styles.section, { marginTop: spacing.lg }]}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={[styles.section, { marginTop: spacing.lg }]}>
           <Text style={styles.sectionTitle}>Account</Text>
           
           {authLoading ? (
@@ -281,12 +281,10 @@ export default function SettingsScreen() {
               </Text>
             </View>
           )}
-        </View>
+        </LinearGradient>
 
-        <View style={[
-          styles.section,
-          preferences.isPremium && { backgroundColor: glass.cardTint.premiumActive }
-        ]}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.section}>
+          {preferences.isPremium && <View style={[StyleSheet.absoluteFillObject, { backgroundColor: glass.cardTint.premiumActive }]} pointerEvents="none" />}
           <View style={styles.premiumBanner}>
             <View style={styles.premiumHeader}>
               <Crown
@@ -331,9 +329,9 @@ export default function SettingsScreen() {
           {__DEV__ && (
             <Text style={styles.devNote}>(Dev toggle for testing)</Text>
           )}
-        </View>
+        </LinearGradient>
 
-        <View style={styles.section}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.section}>
           <Text style={styles.sectionTitle}>Units</Text>
 
           {renderOption(
@@ -365,9 +363,9 @@ export default function SettingsScreen() {
             ],
             value => updatePreferences({ windSpeedUnit: value as 'mph' | 'kmh' })
           )}
-        </View>
+        </LinearGradient>
 
-        <View style={styles.section}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.section}>
           <Text style={styles.sectionTitle}>Hand Preference</Text>
 
           {renderOption(
@@ -382,9 +380,9 @@ export default function SettingsScreen() {
           <Text style={styles.hint}>
             Affects lock button placement in Wind Calculator
           </Text>
-        </View>
+        </LinearGradient>
 
-        <View style={styles.section}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.section}>
           <Text style={styles.sectionTitle}>Weather Data</Text>
 
           {(() => {
@@ -480,9 +478,9 @@ export default function SettingsScreen() {
               );
             }
           })()}
-        </View>
+        </LinearGradient>
 
-        <View style={styles.section}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.section}>
           <TouchableOpacity
             style={styles.sectionHeader}
             onPress={toggleClubBag}
@@ -553,7 +551,7 @@ export default function SettingsScreen() {
                       accessibilityLabel={`Edit ${club.name} distance, currently ${club.customDistance} yards`}
                     >
                       <Text style={styles.distanceText}>
-                        {club.customDistance} yds
+                        {club.customDistance} <Text style={styles.distanceUnit}>yds</Text>
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -561,7 +559,7 @@ export default function SettingsScreen() {
               ))}
             </View>
           </AnimatedCollapsible>
-        </View>
+        </LinearGradient>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>AICaddy Pro v1.0.0</Text>
@@ -594,13 +592,13 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   section: {
-    backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
     marginBottom: spacing.md,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -734,6 +732,10 @@ const styles = StyleSheet.create({
   },
   distanceText: {
     color: colors.text,
+    fontSize: 14,
+  },
+  distanceUnit: {
+    color: colors.textAccent,
     fontSize: 14,
   },
   distanceInput: {

@@ -9,6 +9,10 @@ export const colors = {
   surface: '#1C1F24',          // Card gradient top (lighter)
   surfaceBottom: '#15181D',    // Card gradient bottom (darker)
   surfaceElevated: '#222222',  // Elevated surfaces (buttons)
+
+  // Green-tinted card surfaces (new primary card gradient)
+  surfaceGreen: '#0f1a0f',     // Green card gradient top
+  surfaceGreenBottom: '#0c120c', // Green card gradient bottom
   border: '#2A2D30',           // Subtle borders (visible but calm)
   divider: '#2A2A2A',          // Section dividers
 
@@ -255,9 +259,9 @@ export const backgroundGradient = {
   end: { x: 0.5, y: 1 },
 };
 
-// Card gradient (top-to-bottom for depth)
+// Card gradient (top-to-bottom for depth) — green-tinted for premium feel
 export const cardGradient = {
-  colors: [colors.surface, colors.surfaceBottom] as const,
+  colors: [colors.surfaceGreen, colors.surfaceGreenBottom] as const,
   start: { x: 0, y: 0 },
   end: { x: 0, y: 1 },
 };

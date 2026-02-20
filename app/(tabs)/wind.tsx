@@ -17,7 +17,7 @@ import Slider from '@react-native-community/slider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Lock, Wind, Navigation, Target, Minus, Plus, AlertCircle, Edit3, Check, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, borderRadius, typography, touchTargets, glass } from '@/src/constants/theme';
+import { colors, spacing, borderRadius, typography, touchTargets, glass, cardGradient } from '@/src/constants/theme';
 import { SceneBackground } from '@/src/components/ui';
 import { useWeather } from '@/src/contexts/WeatherContext';
 import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
@@ -247,12 +247,12 @@ export default function WindScreen() {
         </View>
 
         {!hasPermission && (
-          <View style={styles.permissionWarning}>
+          <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.permissionWarning}>
             <AlertCircle color={colors.warning} size={16} />
             <Text style={styles.permissionWarningText}>
               Compass access required for accurate readings
             </Text>
-          </View>
+          </LinearGradient>
         )}
 
         {weather ? (
@@ -263,16 +263,17 @@ export default function WindScreen() {
             accessibilityLabel={`Wind ${windSpeedFormat.value} ${windSpeedFormat.shortLabel}, gusts ${windGustFormat.value} ${windGustFormat.shortLabel}. Tap to enter manual wind`}
             accessibilityHint="Double tap to enter wind data manually"
           >
+            <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={[StyleSheet.absoluteFillObject, { borderRadius: borderRadius.md }]} />
             <View style={styles.windInfoItem}>
               <Wind color={colors.accent} size={16} />
               <Text style={styles.windInfoText}>
-                {windSpeedFormat.value} {windSpeedFormat.shortLabel} {getWindDirectionLabel(weather.windDirection)}
+                {windSpeedFormat.value} <Text style={styles.windUnit}>{windSpeedFormat.shortLabel}</Text> {getWindDirectionLabel(weather.windDirection)}
               </Text>
             </View>
             <View style={styles.windInfoDivider} />
             <View style={styles.windInfoItem}>
               <Text style={styles.windInfoLabel}>Gusts:</Text>
-              <Text style={styles.windInfoText}>{windGustFormat.value} {windGustFormat.shortLabel}</Text>
+              <Text style={styles.windInfoText}>{windGustFormat.value} <Text style={styles.windUnit}>{windGustFormat.shortLabel}</Text></Text>
             </View>
             <View style={styles.windInfoDivider} />
             <View style={styles.editWindHint}>
@@ -281,15 +282,15 @@ export default function WindScreen() {
             </View>
           </TouchableOpacity>
         ) : (
-          <View style={styles.noWeatherBar}>
+          <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.noWeatherBar}>
             <AlertCircle color={colors.textMuted} size={16} />
             <Text style={styles.noWeatherText}>Loading weather data...</Text>
-          </View>
+          </LinearGradient>
         )}
 
-        <View style={styles.distanceSection}>
+        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.distanceSection}>
           <Text style={styles.distanceLabel}>Target Distance</Text>
-          <Text style={styles.distanceValue}>{distanceFormat.value} {distanceFormat.shortLabel}</Text>
+          <Text style={styles.distanceValue}>{distanceFormat.value} <Text style={styles.distanceUnit}>{distanceFormat.shortLabel}</Text></Text>
 
           <View style={styles.sliderContainer}>
             <TouchableOpacity
@@ -342,7 +343,7 @@ export default function WindScreen() {
             <Text style={styles.sliderLabel}>50</Text>
             <Text style={styles.sliderLabel}>350</Text>
           </View>
-        </View>
+        </LinearGradient>
       </ScrollView>
 
       <TouchableOpacity
@@ -557,10 +558,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.warning,
+    overflow: 'hidden',
   },
   permissionWarningText: {
     color: colors.warning,
@@ -572,12 +573,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.surface,
     marginTop: spacing.md,
     padding: spacing.md,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden',
   },
   noWeatherText: {
     color: colors.textMuted,
@@ -587,7 +588,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+    overflow: 'hidden',
     marginTop: spacing.md,
     padding: spacing.md,
     borderRadius: borderRadius.md,
@@ -626,11 +627,11 @@ const styles = StyleSheet.create({
   },
   distanceSection: {
     marginTop: spacing.lg,
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden',
   },
   distanceLabel: {
     color: colors.textSecondary,
@@ -671,6 +672,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  windUnit: {
+    color: colors.textAccent,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  distanceUnit: {
+    color: colors.textAccent,
+    fontSize: 36,
+    fontWeight: '700',
   },
   sliderLabels: {
     flexDirection: 'row',

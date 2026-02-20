@@ -18,7 +18,8 @@
 import React from 'react';
 import { View, Platform, ViewStyle, StyleProp } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { radii, strokes, surface, shadows } from '@/src/constants/material-system';
+import { radii, strokes, shadows } from '@/src/constants/material-system';
+import { cardGradient } from '@/src/constants/theme';
 
 export interface RenderCardProps {
   children: React.ReactNode;
@@ -92,9 +93,9 @@ export function RenderCard({
     <View style={[ambientShadowStyle, outerStyle]} testID={testID}>
       <View style={contactShadowStyle}>
         <LinearGradient
-          colors={[surface.topSheen, surface.base, surface.bottomWeight]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
+          colors={cardGradient.colors}
+          start={cardGradient.start}
+          end={cardGradient.end}
           style={[innerSurfaceStyle, surfaceStyle]}
         >
           {children}

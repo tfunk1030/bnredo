@@ -41,6 +41,7 @@ import {
   strokes,
   controls,
 } from '@/src/constants/material-system';
+import { colors, cardGradient } from '@/src/constants/theme';
 
 export default function ShotScreen() {
   const insets = useSafeAreaInsets();
@@ -131,6 +132,19 @@ export default function ShotScreen() {
 
           {/* SLIDER */}
           <View style={styles.sliderContainer}>
+            {/* Gradient track overlay — active portion only */}
+            <View style={styles.sliderTrackWrapper} pointerEvents="none">
+              <View style={styles.sliderTrackMax} />
+              <LinearGradient
+                colors={[colors.primaryDark, colors.primary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[
+                  styles.sliderTrackMin,
+                  { width: `${((targetYardage - 50) / 300) * 100}%` as any },
+                ]}
+              />
+            </View>
             <Slider
               style={styles.slider}
               minimumValue={50}
@@ -142,9 +156,9 @@ export default function ShotScreen() {
                 setTargetYardage(value);
               }}
               onSlidingComplete={resetSliderHaptic}
-              minimumTrackTintColor={materialColors.primaryVibrant}
-              maximumTrackTintColor={strokes.outer}
-              thumbTintColor={materialColors.primaryVibrant}
+              minimumTrackTintColor="transparent"
+              maximumTrackTintColor="transparent"
+              thumbTintColor={colors.primary}
               accessibilityRole="adjustable"
               accessibilityLabel={`Target distance: ${targetYardage} ${targetFormat.label}`}
               accessibilityHint="Swipe up or down to adjust target distance"
@@ -213,7 +227,7 @@ export default function ShotScreen() {
                 <Text style={styles.clubLabel}>Recommended Club</Text>
                 <Text style={styles.clubName}>{recommendedClub.name}</Text>
                 <Text style={styles.clubDistance}>
-                  ({clubDistanceFormat?.value} {clubDistanceFormat?.shortLabel} club)
+                  ({clubDistanceFormat?.value} <Text style={{ color: colors.textAccent }}>{clubDistanceFormat?.shortLabel}</Text> club)
                 </Text>
               </View>
             )}
@@ -250,7 +264,7 @@ export default function ShotScreen() {
                   </View>
                   <View style={styles.breakdownValueGroup}>
                     <Text style={styles.breakdownValue}>
-                      {calculations.playsLonger ? '+' : '-'}{calculations.yardsDelta} yds
+                      {calculations.playsLonger ? '+' : '-'}{calculations.yardsDelta} <Text style={{ color: colors.textAccent }}>yds</Text>
                     </Text>
                     <Text style={styles.breakdownPct}>
                       ({calculations.totalAdjustmentPercent > 0 ? '+' : ''}{calculations.totalAdjustmentPercent.toFixed(1)}%)
@@ -318,15 +332,39 @@ const styles = StyleSheet.create({
   },
   yardageUnit: {
     ...typography.unit,
+    color: colors.textAccent,  // Unit labels → green accent
   },
 
   // SLIDER
   sliderContainer: {
     marginBottom: spacing.xs,
+    position: 'relative',
   },
   slider: {
     width: '100%',
     height: 36,
+  },
+  // Gradient track overlay (absolutely positioned behind slider)
+  sliderTrackWrapper: {
+    position: 'absolute',
+    left: 16,           // Inset to match slider thumb padding
+    right: 16,
+    top: 16,            // Center 4px track in 36px slider height: (36-4)/2=16
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  sliderTrackMax: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 4,
+    backgroundColor: strokes.outer,
+    borderRadius: 2,
+  },
+  sliderTrackMin: {
+    height: 4,
+    borderRadius: 2,
   },
   sliderLabels: {
     flexDirection: 'row',
@@ -367,6 +405,8 @@ const styles = StyleSheet.create({
   // PLAYS LIKE
   playsLikeValue: {
     ...typography.hero,
+    fontSize: 72,           // Enlarged from 56 → 72 per design spec
+    fontWeight: '700',      // Confirm weight 700
     color: materialColors.primaryVibrant,
     textAlign: 'center',
     marginBottom: spacing.sm,
@@ -374,6 +414,7 @@ const styles = StyleSheet.create({
   playsLikeUnit: {
     ...typography.unit,
     fontSize: 18,
+    color: colors.textAccent,  // Unit labels → green accent
   },
 
   // RECOMMENDED CLUB
