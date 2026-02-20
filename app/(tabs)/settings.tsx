@@ -366,23 +366,6 @@ export default function SettingsScreen() {
         </LinearGradient>
 
         <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.section}>
-          <Text style={styles.sectionTitle}>Hand Preference</Text>
-
-          {renderOption(
-            'Dominant Hand',
-            preferences.handPreference,
-            [
-              { label: 'Left', value: 'left' },
-              { label: 'Right', value: 'right' },
-            ],
-            value => updatePreferences({ handPreference: value as 'right' | 'left' })
-          )}
-          <Text style={styles.hint}>
-            Affects lock button placement in Wind Calculator
-          </Text>
-        </LinearGradient>
-
-        <LinearGradient colors={cardGradient.colors} start={cardGradient.start} end={cardGradient.end} style={styles.section}>
           <Text style={styles.sectionTitle}>Weather Data</Text>
 
           {(() => {

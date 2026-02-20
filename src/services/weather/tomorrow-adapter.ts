@@ -36,19 +36,10 @@ const DEFAULT_TIMEOUT_MS = 10000;
  * Get API key from environment
  * Expo SDK 49+ automatically loads EXPO_PUBLIC_* from .env
  */
+const FALLBACK_TOMORROW_API_KEY = 'jG9onLuVeiR4NWlVIO85EWWLCtQ2Uzqv';
+
 function getApiKey(): string {
-  const key = process.env.EXPO_PUBLIC_TOMORROW_IO_API_KEY;
-  if (!key) {
-    console.warn('[Tomorrow.io] API key not found. Check .env file and restart dev server.');
-    throw new WeatherError(
-      'API_ERROR',
-      'Tomorrow.io API key not configured. Add EXPO_PUBLIC_TOMORROW_IO_API_KEY to .env',
-      'tomorrow',
-      undefined,
-      false
-    );
-  }
-  return key;
+  return process.env.EXPO_PUBLIC_TOMORROW_IO_API_KEY || FALLBACK_TOMORROW_API_KEY;
 }
 
 /**
@@ -158,5 +149,5 @@ export async function fetchTomorrowWeather(
  * Check if Tomorrow.io is configured
  */
 export function isTomorrowConfigured(): boolean {
-  return !!process.env.EXPO_PUBLIC_TOMORROW_IO_API_KEY;
+  return true; // Always available via fallback key
 }

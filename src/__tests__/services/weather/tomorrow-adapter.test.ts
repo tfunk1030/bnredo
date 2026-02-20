@@ -104,29 +104,29 @@ describe('isTomorrowConfigured', () => {
     expect(isTomorrowConfigured()).toBe(true);
   });
 
-  it('returns false when API key is absent', () => {
+  it('returns true even when env key is absent (fallback key available)', () => {
     delete process.env.EXPO_PUBLIC_TOMORROW_IO_API_KEY;
-    expect(isTomorrowConfigured()).toBe(false);
+    expect(isTomorrowConfigured()).toBe(true);
   });
 });
 
 // ─── fetchTomorrowWeather — API key guard ─────────────────────────────────────
 
 describe('fetchTomorrowWeather — API key', () => {
-  it('throws WeatherError(API_ERROR) when key is not set', async () => {
+  it('uses fallback key when env key is not set (does not throw API_ERROR)', async () => {
     delete process.env.EXPO_PUBLIC_TOMORROW_IO_API_KEY;
-
+    // fetchTomorrowWeather should proceed with the fallback key.
+    // It will throw NETWORK_ERROR (no real HTTP in tests) but NOT API_ERROR.
     let thrown: unknown;
     try {
       await fetchTomorrowWeather(LAT, LNG, ELEVATION_FT);
     } catch (e) {
       thrown = e;
     }
-
-    expect(thrown).toBeInstanceOf(WeatherError);
-    expect((thrown as WeatherError).code).toBe('API_ERROR');
-    expect((thrown as WeatherError).provider).toBe('tomorrow');
-    expect((thrown as WeatherError).isRetryable).toBe(false);
+    // Should not be an API key error — if it throws, it's a network/response error
+    if (thrown instanceof WeatherError) {
+      expect((thrown as WeatherError).code).not.toBe('API_ERROR');
+    }
   });
 });
 
