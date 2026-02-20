@@ -104,21 +104,19 @@ describe('YardageModelEnhanced – Edge Cases', () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 4. Spin decay regression guard (BUG DOCUMENTATION)
+  // 4. Spin decay integration (FIXED 2026-02-20)
   //
-  // _calculate_spin_decay exists but is NEVER called inside
-  // calculateAdjustedYardage (see TODO comment in yardagemodel.ts).
-  // Consequently gyro_stability always uses the club's raw spin_rate rather
-  // than the aerodynamically decayed value.  This means a 6-second driver
-  // flight would incorrectly assume the full 2575 RPM for gyro stability
-  // throughout, when at landing spin has dropped to ~79% (~2035 RPM).
+  // _calculate_spin_decay is now called inside _calculate_wind_effects using
+  // mid-flight spin (t = flight_time / 2) for the gyro_stability calculation.
+  // Previously, raw initial spin_rate was used (higher, less accurate).
   //
-  // Until the TODO is addressed, we assert the CURRENT (broken) behaviour so
-  // any accidental change is detected.
+  // Effect: driver (2575 RPM initial) gets ~4% lower gyro_stability at mid-
+  // flight vs using raw spin. High-spin irons (>6000 RPM) are unaffected
+  // because they're capped at 1.0 regardless.
   // ─────────────────────────────────────────────────────────────────────────
-  describe('Spin decay integration (known gap – regression guard)', () => {
+  describe('Spin decay integration (FIXED – mid-flight spin used for gyro_stability)', () => {
     it('long driver shot and short wedge shot should both produce non-zero distance', () => {
-      // Both use raw spin — no decay integration.  Just ensure they compute.
+      // Both now use mid-flight spin for gyro_stability.  Just ensure they compute.
       makeCalm(model);
       const driver = model.calculateAdjustedYardage(300, SkillLevel.PROFESSIONAL, 'driver');
       const wedge = model.calculateAdjustedYardage(100, SkillLevel.PROFESSIONAL, 'lob-wedge');
@@ -128,7 +126,7 @@ describe('YardageModelEnhanced – Edge Cases', () => {
     });
 
     it('high-spin vs low-spin club wind effect differs (gyro_stability observable)', () => {
-      // 20 mph headwind
+      // 20 mph headwind — gyro_stability now uses mid-flight spin
       model.setConditions(77, 0, 20, 0, 1013.25, 50);
       const driverCalm = (() => { makeCalm(model); return model.calculateAdjustedYardage(300, SkillLevel.PROFESSIONAL, 'driver'); })();
       model.setConditions(77, 0, 20, 0, 1013.25, 50);
@@ -142,9 +140,9 @@ describe('YardageModelEnhanced – Edge Cases', () => {
       const driverWindEffect = driverCalm.carryDistance - driverHead.carryDistance;
       const wedgeWindEffect = wedgeCalm.carryDistance - wedgeHead.carryDistance;
 
-      console.log(`Headwind effect (20 mph, gyro_stability uses raw spin):`);
-      console.log(`  Driver (2575 rpm): ${driverWindEffect.toFixed(1)} yards`);
-      console.log(`  PW (8896 rpm): ${wedgeWindEffect.toFixed(1)} yards`);
+      console.log(`Headwind effect (20 mph, gyro_stability uses mid-flight spin):`);
+      console.log(`  Driver (2575 RPM initial → ~2469 RPM at mid-flight): ${driverWindEffect.toFixed(1)} yards`);
+      console.log(`  PW (9236 RPM initial → capped at 1.0 regardless): ${wedgeWindEffect.toFixed(1)} yards`);
 
       // Both should show meaningful headwind penalty
       expect(driverWindEffect).toBeGreaterThan(5);

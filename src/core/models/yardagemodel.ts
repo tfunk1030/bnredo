@@ -330,7 +330,12 @@ export class YardageModelEnhanced {
 
     const height_factor = Math.pow(club_data.max_height / 40, 3);
     const speed_factor = Math.sqrt(123 / (club_data.ball_speed * ball.speed_factor));
-    const gyro_stability = Math.min(1, club_data.spin_rate / YardageModelEnhanced.SPIN_GYRO_THRESHOLD);
+    // Use mid-flight spin (t = flight_time/2) for gyro stability — more accurate than
+    // raw initial spin_rate, since spin decays ~3.3% per second during flight.
+    // For driver (~5.7s): initial 2575 RPM → mid-flight ~2469 RPM (~4% lower gyro_stability)
+    // For high-spin irons (>6000 RPM): still capped at 1.0, no change.
+    const midFlightSpin = this._calculate_spin_decay(club_data.spin_rate, flight_time / 2, club_data.ball_speed);
+    const gyro_stability = Math.min(1, midFlightSpin / YardageModelEnhanced.SPIN_GYRO_THRESHOLD);
     const stability_factor = 0.7 + (0.42 * gyro_stability);
 
     const HEADTAIL_CALIBRATION = 0.15;
@@ -385,11 +390,12 @@ export class YardageModelEnhanced {
     };
   }
 
-  // TODO: _calculate_spin_decay is currently unused — spin decay is not yet
-  // integrated into calculateAdjustedYardage. The method computes the correct
-  // exponential decay but its result is never fed back into _calculate_wind_effects
-  // (which still uses clubData.spin_rate directly). Integrating this would
-  // require passing decayed spin into the gyro_stability calculation.
+  /**
+   * Calculate spin rate at mid-flight using exponential decay.
+   * Used by _calculate_wind_effects to compute a more accurate gyro_stability
+   * (spin decreases ~3.3% per second; using the mid-flight value avoids
+   * overestimating gyro stabilisation for long driver shots).
+   */
   private _calculate_spin_decay(spin_rate: number, flight_time: number, ball_speed: number): number {
     const decay_rate = 0.12;
     const speed_factor = ball_speed / 123;
