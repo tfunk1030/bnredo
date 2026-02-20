@@ -15,9 +15,8 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.tfunk.aicaddypro",
+      "bundleIdentifier": "com.tfunk1030.aicaddypro",
       "buildNumber": "1",
-      "deploymentTarget": "16.0",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "AICaddy Pro uses your location to get local weather conditions for accurate shot calculations.",
         "NSMotionUsageDescription": "AICaddy Pro uses your device compass to detect the direction you're aiming at for wind-adjusted shot calculations.",
@@ -26,7 +25,7 @@
       }
     },
     "android": {
-      "package": "com.tfunk.aicaddypro",
+      "package": "com.tfunk1030.aicaddypro",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",

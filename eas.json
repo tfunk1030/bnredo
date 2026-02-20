@@ -50,8 +50,8 @@
     "production": {
       "ios": {
         "appleId": "taylor@tfunk.golf",
-        "ascAppId": "REPLACE_WITH_ASC_APP_ID",
-        "appleTeamId": "REPLACE_WITH_TEAM_ID"
+        "ascAppId": "6742397632",
+        "appleTeamId": "NYJGKK7SKZ"
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",
