@@ -34,7 +34,7 @@ interface WeatherContextType {
   error: string | null;
   isOffline: boolean;
   refreshWeather: () => Promise<void>;
-  updateManualWeather: (updates: Partial<WeatherData>) => void;
+  updateManualWeather: (updates: Partial<WeatherData>) => Promise<void>;
 }
 
 const WeatherContext = React.createContext<WeatherContextType | null>(null);
