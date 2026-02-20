@@ -220,10 +220,10 @@ export default function ShotScreen() {
         {calculations && (
           <RenderCard containerStyle={styles.cardSpacing} padding={spacing.md}>
             <Text style={styles.sectionLabel}>Plays Like</Text>
-            <Text style={styles.playsLikeValue}>
-              {adjustedFormat?.value}
+            <View style={styles.playsLikeRow}>
+              <Text style={styles.playsLikeValue}>{adjustedFormat?.value}</Text>
               <Text style={styles.playsLikeUnit}> {adjustedFormat?.label}</Text>
-            </Text>
+            </View>
 
             {/* RECOMMENDED CLUB */}
             {recommendedClub && (
@@ -407,18 +407,24 @@ const styles = StyleSheet.create({
   },
 
   // PLAYS LIKE
-  playsLikeValue: {
-    ...typography.hero,
-    fontSize: 72,           // Enlarged from 56 → 72 per design spec
-    fontWeight: '700',      // Confirm weight 700
-    color: materialColors.primaryVibrant,
-    textAlign: 'center',
+  playsLikeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
     marginBottom: spacing.sm,
   },
+  playsLikeValue: {
+    fontSize: 72,
+    fontWeight: '700',
+    lineHeight: 76,
+    color: materialColors.primaryVibrant,
+  },
   playsLikeUnit: {
-    ...typography.unit,
     fontSize: 18,
-    color: colors.textAccent,  // Unit labels → green accent
+    fontWeight: '500',
+    lineHeight: 22,
+    marginBottom: 10,         // aligns "yards" off the number baseline
+    color: colors.textAccent,
   },
 
   // RECOMMENDED CLUB
