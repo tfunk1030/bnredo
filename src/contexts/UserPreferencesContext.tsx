@@ -104,8 +104,9 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
 
   const updatePreferences = async (updates: Partial<UserPreferences>) => {
     try {
+      // Use functional update so rapid sequential calls don't lose intermediate changes
       const newPreferences = { ...preferences, ...updates };
-      setPreferences(newPreferences);
+      setPreferences(prev => ({ ...prev, ...updates }));
       
       // Always save to local storage
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newPreferences));
