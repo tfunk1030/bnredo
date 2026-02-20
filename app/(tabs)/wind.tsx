@@ -343,33 +343,32 @@ export default function WindScreen() {
             <Text style={styles.sliderLabel}>50</Text>
             <Text style={styles.sliderLabel}>350</Text>
           </View>
+
+          <TouchableOpacity
+            onPress={handleLock}
+            disabled={!weather}
+            accessibilityRole="button"
+            accessibilityLabel="Calculate wind effect"
+            accessibilityHint={weather ? "Double tap to lock compass heading and calculate wind effect" : "Weather data required to calculate"}
+            accessibilityState={{ disabled: !weather }}
+            activeOpacity={0.8}
+            style={styles.calculateButton}
+          >
+            <Animated.View
+              style={[
+                styles.calculateButtonInner,
+                !weather && styles.calculateButtonDisabled,
+                { transform: [{ scale: lockButtonScale }] },
+              ]}
+            >
+              <Target color={weather ? colors.white : colors.textMuted} size={20} />
+              <Text style={[styles.calculateButtonText, !weather && styles.lockButtonTextDisabled]}>
+                Calculate
+              </Text>
+            </Animated.View>
+          </TouchableOpacity>
         </LinearGradient>
       </ScrollView>
-
-      <TouchableOpacity
-        onPress={handleLock}
-        disabled={!weather}
-        accessibilityRole="button"
-        accessibilityLabel="Lock target direction"
-        accessibilityHint={weather ? "Double tap to lock current compass heading as target" : "Weather data required to lock target"}
-        accessibilityState={{ disabled: !weather }}
-        activeOpacity={0.8}
-      >
-        <Animated.View
-          style={[
-            styles.lockButton,
-            { bottom: 40 + insets.bottom },
-            preferences.handPreference === 'left' && styles.lockButtonLeft,
-            !weather && styles.lockButtonDisabled,
-            { transform: [{ scale: lockButtonScale }] },
-          ]}
-        >
-          <Target color={weather ? colors.white : colors.textMuted} size={28} />
-          <Text style={[styles.lockButtonText, !weather && styles.lockButtonTextDisabled]}>
-            Lock Target
-          </Text>
-        </Animated.View>
-      </TouchableOpacity>
 
       {/* Manual Wind Input Modal */}
       <Modal
@@ -693,16 +692,18 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 11,
   },
-  lockButton: {
-    position: 'absolute',
-    right: spacing.lg,
-    backgroundColor: colors.primary,
+  calculateButton: {
+    marginTop: spacing.md,
+  },
+  calculateButtonInner: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    backgroundColor: colors.primary,
     borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     ...Platform.select({
       ios: {
         shadowColor: colors.black,
@@ -715,21 +716,17 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  lockButtonLeft: {
-    right: undefined,
-    left: spacing.lg,
-  },
-  lockButtonDisabled: {
+  calculateButtonDisabled: {
     backgroundColor: colors.surfaceElevated,
     opacity: 0.5,
   },
-  lockButtonText: {
+  lockButtonTextDisabled: {
+    color: colors.textMuted,
+  },
+  calculateButtonText: {
     color: colors.white,
     fontSize: 16,
     fontWeight: '700',
-  },
-  lockButtonTextDisabled: {
-    color: colors.textMuted,
   },
   // Modal styles
   modalOverlay: {
