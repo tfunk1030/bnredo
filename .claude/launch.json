@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "expo-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Users/tfunk/bnredo/node_modules/expo/bin/cli", "start"],
+      "port": 8081
+    },
+    {
+      "name": "expo-dev-client",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Users/tfunk/bnredo/node_modules/expo/bin/cli", "start", "--dev-client"],
+      "port": 8081
+    }
+  ]
+}
