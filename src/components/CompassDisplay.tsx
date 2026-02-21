@@ -199,18 +199,20 @@ export const CompassDisplay = React.memo(function CompassDisplay({ heading, wind
             const isNorth = point.label === 'N';
             const isCardinal = point.cardinal;
             return (
-              <SvgText
-                key={point.label}
-                x={pos.x}
-                y={pos.y}
-                fontSize={isNorth ? 18 : isCardinal ? 14 : 14}
-                fontWeight={isNorth ? '800' : isCardinal ? '700' : '500'}
-                fill={isNorth ? colors.error : isCardinal ? colors.text : colors.textSecondary}
-                textAnchor="middle"
-                alignmentBaseline="middle"
-              >
-                {point.label}
-              </SvgText>
+              // Counter-rotate each label so it stays upright as the ring spins
+              <G key={point.label} rotation={heading} origin={`${pos.x}, ${pos.y}`}>
+                <SvgText
+                  x={pos.x}
+                  y={pos.y}
+                  fontSize={isNorth ? 18 : isCardinal ? 14 : 14}
+                  fontWeight={isNorth ? '800' : isCardinal ? '700' : '500'}
+                  fill={isNorth ? colors.error : isCardinal ? colors.text : colors.textSecondary}
+                  textAnchor="middle"
+                  alignmentBaseline="middle"
+                >
+                  {point.label}
+                </SvgText>
+              </G>
             );
           })}
         </G>
