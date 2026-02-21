@@ -101,8 +101,13 @@ jest.mock('lucide-react-native', () => {
     Edit3: Icon,
     Check: Icon,
     X: Icon,
+    Camera: Icon,  // Added: HUD toggle button uses Camera icon
   };
 });
+
+jest.mock('@/src/components/CameraHUD', () => ({
+  CameraHUD: () => null,  // Not rendered in tests (hudMode defaults false)
+}));
 
 // ─── Mock contexts ────────────────────────────────────────────────────────────
 
@@ -316,6 +321,16 @@ describe('WindScreen', () => {
       });
 
       expect(screen.queryByText('Compass access required for accurate readings')).toBeNull();
+    });
+
+    it('renders HUD toggle button', async () => {
+      render(<WindScreen />);
+
+      await waitFor(() => {
+        const hudBtn = screen.getByRole('button', { name: /switch to camera hud mode/i });
+        expect(hudBtn).toBeTruthy();
+        expect(screen.getByText('HUD')).toBeTruthy();
+      });
     });
   });
 
