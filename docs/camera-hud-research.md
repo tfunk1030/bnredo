@@ -54,6 +54,7 @@ A toggle on the Wind screen that switches from the current card-based layout to 
 ┌──────────────────────────────────────┐
 │  [LIVE CAMERA FEED - FULL SCREEN]    │
 │                                       │
+│                                       │
 │         ┌─── Compass Ring ───┐       │
 │         │                     │       │
 │         │    ╋ (crosshair)    │       │
@@ -64,14 +65,13 @@ A toggle on the Wind screen that switches from the current card-based layout to 
 │     ┌─── PLAYS LIKE: 162 YDS ───┐    │
 │     └────────────────────────────┘    │
 │                                       │
-│  ┌────┐ ┌────┐ ┌────┐ ┌────────┐    │
-│  │HEAD│ │CROSS│ │GUST│ │ALTITUDE│    │
-│  │2.1 │ │12.4→│ │18  │ │  545ft │    │
-│  └────┘ └────┘ └────┘ └────────┘    │
 │                                       │
 │         [ LOCK TARGET ]               │
+│                                       │
 └──────────────────────────────────────┘
 ```
+
+**On screen: crosshair, compass, wind arrow, Plays Like, lock button. Nothing else.**
 
 ### Key Elements
 
@@ -83,9 +83,9 @@ A toggle on the Wind screen that switches from the current card-based layout to 
 
 4. **"Plays Like" hero number** — large text overlay (72px+) showing adjusted yardage. This is the killer feature — the reference app doesn't have this. You see the flag AND the adjusted distance simultaneously.
 
-5. **Bottom data strip** — Head/Tail component, Crosswind component, Gusts, Altitude/Temp. Same data as current wind screen but in a compact overlay bar.
+5. **Lock/Calculate button** — bottom center, same logic as current. When locked, crosshair turns solid, heading freezes, "Plays Like" number appears. Clean, single action.
 
-6. **Lock Target button** — bottom center, same as current functionality. When locked, crosshair turns solid and calculations freeze.
+6. **No data pills / bottom strip.** Keep it pure fighter-pilot. The only data on screen is the crosshair, compass ring, wind arrow, and Plays Like number. Everything else lives in card mode.
 
 7. **Monochrome/green tint filter** — camera feed slightly desaturated with a green tint to match brand aesthetic and improve overlay contrast. Not required — test with and without.
 
@@ -126,8 +126,7 @@ WindScreen (wind.tsx)
     │   ├── CrosshairReticle (SVG)
     │   ├── CompassRing (SVG, rotates with heading)
     │   ├── WindVectorArrow (SVG)
-    │   ├── PlaysLikeDisplay (Text overlay)
-    │   └── DataStrip (bottom bar)
+    │   └── PlaysLikeDisplay (Text overlay)
     └── LockTargetButton
 ```
 
@@ -266,10 +265,10 @@ The camera is just a background — all interactivity happens in the overlay lay
 - Compass ring overlay (adapted from current CompassDisplay)
 - Wind vector arrow
 - "Plays Like" hero number overlay
-- Bottom data strip (head/tail, cross, gust, altitude)
-- Lock target with haptic feedback
+- Lock/Calculate button with haptic feedback
 - Auto-timeout (60s)
 - Battery-aware (show warning if <20%)
+- **No data pills, no bottom strip — pure fighter-pilot aesthetic**
 
 ### Phase 4: Polish & Gate (2-3 days)
 - Green tint / monochrome camera filter
@@ -290,7 +289,7 @@ The camera is just a background — all interactivity happens in the overlay lay
 
 4. **Should we show the wind-adjusted distance on the shot screen too, or only in HUD?** Currently Plays Like is on the shot screen. Duplicating in HUD creates two sources of truth.
 
-5. **What about the wind data pills from the reference app?** The "Head/Tail" and "Cross" split is very golfer-friendly. Should we adopt this format in both HUD and card mode?
+5. ~~**What about the wind data pills from the reference app?**~~ **DECIDED: No data pills.** Pure fighter-pilot HUD. Only crosshair, compass, wind arrow, Plays Like, and lock button on screen.
 
 ---
 
