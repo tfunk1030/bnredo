@@ -469,10 +469,13 @@ export default function WindScreen() {
       {/* CAMERA HUD OVERLAY */}
       {hudMode && (
         <CameraHUD
-          heading={isLocked ? lockedHeading : heading}
+          heading={heading}
+          lockedHeading={lockedHeading}
           windDirection={weather?.windDirection ?? 0}
           windSpeed={windSpeedFormat.value}
           windSpeedUnit={windSpeedFormat.shortLabel}
+          targetYardage={targetYardage}
+          onYardageChange={setTargetYardage}
           isLocked={isLocked}
           onLock={() => {
             setLockedHeading(heading);

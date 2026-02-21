@@ -8,7 +8,7 @@
  */
 
 import * as React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { CameraHUD } from '@/src/components/CameraHUD';
 
 // ─── expo-camera mock ──────────────────────────────────────────────────────────
@@ -32,6 +32,7 @@ jest.mock('react-native-svg', () => {
     Svg: nullEl,
     Circle: nullEl,
     Line: nullEl,
+    Polygon: nullEl,
     G: ({ children }: { children?: React.ReactNode }) => children ?? null,
     Text: nullEl,
   };
@@ -50,9 +51,12 @@ afterEach(() => { jest.useRealTimers(); });
 
 const baseProps = {
   heading: 0,
+  lockedHeading: 0,
   windDirection: 0,
   windSpeed: 10,
   windSpeedUnit: 'mph',
+  targetYardage: 150,
+  onYardageChange: jest.fn(),
   onFire: jest.fn(),
   onClose: jest.fn(),
   isLocked: false,
@@ -232,5 +236,100 @@ describe('CameraHUD — wind display', () => {
   it('displays the unit', () => {
     const { getByText } = renderHUD({ windSpeedUnit: 'kph' });
     expect(getByText('kph')).toBeTruthy();
+  });
+});
+
+// ─── Yardage Selector ─────────────────────────────────────────────────────────
+
+describe('CameraHUD — YardageSelector', () => {
+  beforeEach(() => { mockPermission = { granted: true }; });
+
+  it('renders HUD toggle button', () => {
+    const { getByText } = renderHUD();
+    expect(getByText('HUD MODE')).toBeTruthy();
+  });
+
+  it('displays target yardage value', () => {
+    const { getByText } = renderHUD({ targetYardage: 175 });
+    expect(getByText('175')).toBeTruthy();
+  });
+
+  it('shows yds unit label', () => {
+    const { getByText } = renderHUD({ targetYardage: 150 });
+    expect(getByText('yds')).toBeTruthy();
+  });
+
+  it('renders decrease yardage button', () => {
+    const { getByText } = renderHUD();
+    expect(getByText('−')).toBeTruthy();
+  });
+
+  it('renders increase yardage button', () => {
+    const { getByText } = renderHUD();
+    expect(getByText('+')).toBeTruthy();
+  });
+
+  it('calls onYardageChange with yards - 5 when decrement pressed', () => {
+    const onYardageChange = jest.fn();
+    const { getByText } = renderHUD({ targetYardage: 150, onYardageChange });
+    fireEvent.press(getByText('−'));
+    expect(onYardageChange).toHaveBeenCalledWith(145);
+  });
+
+  it('calls onYardageChange with yards + 5 when increment pressed', () => {
+    const onYardageChange = jest.fn();
+    const { getByText } = renderHUD({ targetYardage: 150, onYardageChange });
+    fireEvent.press(getByText('+'));
+    expect(onYardageChange).toHaveBeenCalledWith(155);
+  });
+
+  it('clamps minimum yardage at 50', () => {
+    const onYardageChange = jest.fn();
+    const { getByText } = renderHUD({ targetYardage: 50, onYardageChange });
+    fireEvent.press(getByText('−'));
+    expect(onYardageChange).toHaveBeenCalledWith(50);
+  });
+
+  it('clamps maximum yardage at 400', () => {
+    const onYardageChange = jest.fn();
+    const { getByText } = renderHUD({ targetYardage: 400, onYardageChange });
+    fireEvent.press(getByText('+'));
+    expect(onYardageChange).toHaveBeenCalledWith(400);
+  });
+});
+
+// ─── Heading Deviation Indicator ─────────────────────────────────────────────
+
+describe('CameraHUD — heading deviation', () => {
+  beforeEach(() => { mockPermission = { granted: true }; });
+
+  it('shows ON TARGET when locked and heading matches lockedHeading', () => {
+    const { getByText } = renderHUD({ isLocked: true, heading: 90, lockedHeading: 90 });
+    expect(getByText(/ON TARGET/)).toBeTruthy();
+  });
+
+  it('shows deviation when phone drifts right after lock', () => {
+    // heading=100, lockedHeading=90 → delta=10 → "▶  10°  OFF"
+    const { getByText } = renderHUD({ isLocked: true, heading: 100, lockedHeading: 90 });
+    // /OFF/ distinguishes deviation text from FIRE button (which also has ▶)
+    expect(getByText(/OFF/)).toBeTruthy();
+  });
+
+  it('shows deviation when phone drifts left after lock', () => {
+    // heading=80, lockedHeading=90 → delta=-10 → "◀  10°  OFF"
+    const { getByText } = renderHUD({ isLocked: true, heading: 80, lockedHeading: 90 });
+    expect(getByText(/◀/)).toBeTruthy();
+  });
+
+  it('does not show deviation indicator when unlocked', () => {
+    const { queryByText } = renderHUD({ isLocked: false, heading: 100, lockedHeading: 90 });
+    expect(queryByText(/ON TARGET/)).toBeNull();
+    expect(queryByText(/OFF/)).toBeNull();
+  });
+
+  it('shows ON TARGET for small drift within 2 degree threshold', () => {
+    // delta = 1° — below threshold, still ON TARGET
+    const { getByText } = renderHUD({ isLocked: true, heading: 91, lockedHeading: 90 });
+    expect(getByText(/ON TARGET/)).toBeTruthy();
   });
 });
