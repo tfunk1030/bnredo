@@ -125,6 +125,70 @@ export default function ShotScreen() {
 
         <WeatherCard />
 
+        {/* PLAYS LIKE CARD */}
+        {calculations && (
+          <RenderCard containerStyle={styles.cardSpacing} padding={spacing.md}>
+            <Text style={styles.sectionLabel}>Plays Like</Text>
+            <View style={styles.playsLikeRow}>
+              <Text style={styles.playsLikeValue}>{adjustedFormat?.value}</Text>
+              <Text style={styles.playsLikeUnit}> {adjustedFormat?.label}</Text>
+            </View>
+
+            {/* RECOMMENDED CLUB */}
+            {recommendedClub && (
+              <View style={styles.clubRecommendation}>
+                <Text style={styles.clubLabel}>Recommended Club</Text>
+                <Text style={styles.clubName}>{recommendedClub.name}</Text>
+                <Text style={styles.clubDistance}>
+                  ({clubDistanceFormat?.value} <Text style={{ color: colors.textAccent }}>{clubDistanceFormat?.shortLabel}</Text> club)
+                </Text>
+              </View>
+            )}
+
+            {/* BREAKDOWN TOGGLE */}
+            <TouchableOpacity
+              style={styles.breakdownToggle}
+              onPress={() => setShowBreakdown(!showBreakdown)}
+              accessibilityRole="button"
+              accessibilityLabel={`${showBreakdown ? 'Hide' : 'Show'} environmental breakdown`}
+              accessibilityState={{ expanded: showBreakdown }}
+            >
+              <Text style={styles.breakdownToggleText}>
+                {showBreakdown ? 'Hide' : 'Show'} Breakdown
+              </Text>
+              {showBreakdown ? (
+                <ChevronUp color={typography.label.color} size={16} />
+              ) : (
+                <ChevronDown color={typography.label.color} size={16} />
+              )}
+            </TouchableOpacity>
+
+            {/* BREAKDOWN */}
+            {showBreakdown && (
+              <View style={styles.breakdown}>
+                <View style={styles.breakdownRow}>
+                  <View>
+                    <Text style={styles.breakdownLabel}>Air Density &amp; Altitude</Text>
+                    <Text style={styles.breakdownSubtext}>
+                      {calculations.playsLonger
+                        ? 'Dense air — ball carries shorter'
+                        : 'Thin air — ball carries farther'}
+                    </Text>
+                  </View>
+                  <View style={styles.breakdownValueGroup}>
+                    <Text style={styles.breakdownValue}>
+                      {calculations.playsLonger ? '+' : '-'}{calculations.yardsDelta} <Text style={{ color: colors.textAccent }}>yds</Text>
+                    </Text>
+                    <Text style={styles.breakdownPct}>
+                      ({calculations.totalAdjustmentPercent > 0 ? '+' : ''}{calculations.totalAdjustmentPercent.toFixed(1)}%)
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </RenderCard>
+        )}
+
         {/* TARGET DISTANCE CARD */}
         <RenderCard containerStyle={styles.cardSpacing} padding={spacing.md}>
           <Text style={styles.sectionLabel}>Target Distance</Text>
@@ -215,70 +279,6 @@ export default function ShotScreen() {
             ))}
           </View>
         </RenderCard>
-
-        {/* PLAYS LIKE CARD */}
-        {calculations && (
-          <RenderCard containerStyle={styles.cardSpacing} padding={spacing.md}>
-            <Text style={styles.sectionLabel}>Plays Like</Text>
-            <View style={styles.playsLikeRow}>
-              <Text style={styles.playsLikeValue}>{adjustedFormat?.value}</Text>
-              <Text style={styles.playsLikeUnit}> {adjustedFormat?.label}</Text>
-            </View>
-
-            {/* RECOMMENDED CLUB */}
-            {recommendedClub && (
-              <View style={styles.clubRecommendation}>
-                <Text style={styles.clubLabel}>Recommended Club</Text>
-                <Text style={styles.clubName}>{recommendedClub.name}</Text>
-                <Text style={styles.clubDistance}>
-                  ({clubDistanceFormat?.value} <Text style={{ color: colors.textAccent }}>{clubDistanceFormat?.shortLabel}</Text> club)
-                </Text>
-              </View>
-            )}
-
-            {/* BREAKDOWN TOGGLE */}
-            <TouchableOpacity
-              style={styles.breakdownToggle}
-              onPress={() => setShowBreakdown(!showBreakdown)}
-              accessibilityRole="button"
-              accessibilityLabel={`${showBreakdown ? 'Hide' : 'Show'} environmental breakdown`}
-              accessibilityState={{ expanded: showBreakdown }}
-            >
-              <Text style={styles.breakdownToggleText}>
-                {showBreakdown ? 'Hide' : 'Show'} Breakdown
-              </Text>
-              {showBreakdown ? (
-                <ChevronUp color={typography.label.color} size={16} />
-              ) : (
-                <ChevronDown color={typography.label.color} size={16} />
-              )}
-            </TouchableOpacity>
-
-            {/* BREAKDOWN */}
-            {showBreakdown && (
-              <View style={styles.breakdown}>
-                <View style={styles.breakdownRow}>
-                  <View>
-                    <Text style={styles.breakdownLabel}>Air Density &amp; Altitude</Text>
-                    <Text style={styles.breakdownSubtext}>
-                      {calculations.playsLonger
-                        ? 'Dense air — ball carries shorter'
-                        : 'Thin air — ball carries farther'}
-                    </Text>
-                  </View>
-                  <View style={styles.breakdownValueGroup}>
-                    <Text style={styles.breakdownValue}>
-                      {calculations.playsLonger ? '+' : '-'}{calculations.yardsDelta} <Text style={{ color: colors.textAccent }}>yds</Text>
-                    </Text>
-                    <Text style={styles.breakdownPct}>
-                      ({calculations.totalAdjustmentPercent > 0 ? '+' : ''}{calculations.totalAdjustmentPercent.toFixed(1)}%)
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
-          </RenderCard>
-        )}
       </ScrollView>
     </SceneBackground>
   );
