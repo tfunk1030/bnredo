@@ -313,25 +313,6 @@ export const CompassDisplay = React.memo(function CompassDisplay({ heading, wind
         </View>
       </View>
 
-      <View
-        style={styles.headingContainer}
-        accessible={true}
-        accessibilityRole="text"
-        accessibilityLabel={`Heading: ${Math.round(heading)} degrees. ${isLocked ? 'Target locked' : 'Facing direction'}`}
-      >
-        <Text
-          style={styles.headingValue}
-          importantForAccessibility="no"
-        >
-          {Math.round(heading)}°
-        </Text>
-        <Text
-          style={[styles.headingLabel, isLocked && styles.headingLabelLocked]}
-          importantForAccessibility="no"
-        >
-          {isLocked ? 'Target Locked' : 'Facing Direction'}
-        </Text>
-      </View>
     </View>
   );
 });
@@ -361,22 +342,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
-  headingContainer: {
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  headingValue: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  headingLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  headingLabelLocked: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
+  // (heading degree display removed per coach feedback — Feb 21 2026)
 });

@@ -42,29 +42,6 @@ describe('CompassDisplay', () => {
       });
     });
 
-    it('displays heading value', async () => {
-      render(<CompassDisplay {...defaultProps} heading={45} />);
-
-      await waitFor(() => {
-        expect(screen.getByText('45°')).toBeTruthy();
-      });
-    });
-
-    it('shows "Facing Direction" when not locked', async () => {
-      render(<CompassDisplay {...defaultProps} isLocked={false} />);
-
-      await waitFor(() => {
-        expect(screen.getByText('Facing Direction')).toBeTruthy();
-      });
-    });
-
-    it('shows "Target Locked" when locked', async () => {
-      render(<CompassDisplay {...defaultProps} isLocked={true} />);
-
-      await waitFor(() => {
-        expect(screen.getByText('Target Locked')).toBeTruthy();
-      });
-    });
   });
 
   describe('Accessibility', () => {
@@ -154,23 +131,14 @@ describe('CompassDisplay', () => {
     });
 
     it('hides legend from accessibility tree', async () => {
-      render(<CompassDisplay {...defaultProps} />);
+      const { toJSON } = render(<CompassDisplay {...defaultProps} />);
 
       await waitFor(() => {
-        // The legend row has importantForAccessibility="no-hide-descendants"
-        // We verify by checking the heading container has role "text" while
-        // the legend row has role "none"
-        const headingContainer = screen.getByLabelText(/Heading:/);
-        expect(headingContainer.props.accessibilityRole).toBe('text');
-      });
-    });
-
-    it('has accessible heading container with correct label', async () => {
-      render(<CompassDisplay {...defaultProps} heading={270} isLocked={false} />);
-
-      await waitFor(() => {
-        const headingContainer = screen.getByLabelText(/Heading: 270 degrees/);
-        expect(headingContainer).toBeTruthy();
+        // Legend row has importantForAccessibility="no-hide-descendants"
+        // Verify legend items are present in the render tree but not accessible
+        const json = JSON.stringify(toJSON());
+        expect(json).toContain('Your Heading');
+        expect(json).toContain('no-hide-descendants');
       });
     });
   });
