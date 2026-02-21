@@ -1,12 +1,12 @@
 /**
- * CameraHUD — Phase 2 Prototype
+ * CameraHUD — Phase 3 Polish
  *
  * Full-screen camera view with wind data overlay.
  * Fighter-pilot HUD aesthetic: crosshair, compass ring, lock/fire flow.
  * All results shown on existing WindResultsModal — zero data on HUD.
  *
  * Phase 2: Camera + crosshair + compass + lock/fire button.
- * Phase 3: Reticle animations, FIRE flash, green tint filter.
+ * Phase 3: Compass ring overlay, lock pulse animation, FIRE flash, auto-timeout countdown.
  */
 
 import * as React from 'react';
@@ -16,28 +16,150 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  Platform,
+  Animated,
+  Easing,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import Svg, { Line, Rect, Circle, G, Path } from 'react-native-svg';
+import Svg, { Line, Rect, Circle, G, Path, Text as SvgText } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/src/constants/theme';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
+// ─── Auto-timeout constant ─────────────────────────────────────────────────────
+const AUTO_UNLOCK_SECS = 60;
+
+// ─── Compass Ring HUD Overlay ─────────────────────────────────────────────────
+// A semi-transparent compass ring that rotates with device heading,
+// freezes when target is locked.
+
+interface CompassRingOverlayProps {
+  heading: number;     // current device heading (degrees)
+  frozen: boolean;     // when true, ring stops rotating (locked state)
+  size?: number;
+}
+
+function CompassRingOverlay({ heading, frozen, size = 260 }: CompassRingOverlayProps) {
+  const center = size / 2;
+  const outerRadius = size * 0.42;
+  const tickRadius = size * 0.37;
+
+  // Cardinals positioned just inside the outer edge
+  const cardinalRadius = outerRadius - 18;
+
+  const getPoint = (angle: number, radius: number) => {
+    const rad = ((angle - 90) * Math.PI) / 180;
+    return {
+      x: center + radius * Math.cos(rad),
+      y: center + radius * Math.sin(rad),
+    };
+  };
+
+  const cardinalPoints = [
+    { label: 'N', angle: 0, major: true },
+    { label: 'NE', angle: 45, major: false },
+    { label: 'E', angle: 90, major: true },
+    { label: 'SE', angle: 135, major: false },
+    { label: 'S', angle: 180, major: true },
+    { label: 'SW', angle: 225, major: false },
+    { label: 'W', angle: 270, major: true },
+    { label: 'NW', angle: 315, major: false },
+  ];
+
+  // Generate tick marks around the ring (72 ticks = every 5 degrees)
+  const ticks = Array.from({ length: 72 }, (_, i) => {
+    const angle = i * 5;
+    const isMajor = i % 9 === 0;   // every 45°
+    const isMinor = i % 3 === 0;   // every 15°
+    const startR = isMajor ? tickRadius - 10 : isMinor ? tickRadius - 6 : tickRadius - 3;
+    const start = getPoint(angle, startR);
+    const end = getPoint(angle, tickRadius);
+    return (
+      <Line
+        key={i}
+        x1={start.x} y1={start.y}
+        x2={end.x}   y2={end.y}
+        stroke={isMajor ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)'}
+        strokeWidth={isMajor ? 2 : 1}
+      />
+    );
+  });
+
+  // Heading to use for rotation — frozen when locked
+  const ringHeading = frozen ? 0 : heading;
+
+  return (
+    <Svg width={size} height={size} opacity={0.65}>
+      {/* Outer ring border */}
+      <Circle
+        cx={center} cy={center}
+        r={outerRadius}
+        fill="transparent"
+        stroke="rgba(255,255,255,0.4)"
+        strokeWidth={1.5}
+      />
+
+      {/* Rotating group: ticks + cardinal labels */}
+      <G rotation={-ringHeading} origin={`${center}, ${center}`}>
+        {ticks}
+
+        {cardinalPoints.map(({ label, angle, major }) => {
+          const pos = getPoint(angle, cardinalRadius);
+          const isNorth = label === 'N';
+          const fontSize = isNorth ? 13 : major ? 11 : 9;
+          const fontWeight = isNorth ? '800' : major ? '700' : '500';
+          const fill = isNorth
+            ? '#FF6B6B'
+            : major
+            ? 'rgba(255,255,255,0.9)'
+            : 'rgba(255,255,255,0.5)';
+
+          return (
+            // Counter-rotate label so it stays upright as ring spins
+            <G key={label} rotation={ringHeading} origin={`${pos.x}, ${pos.y}`}>
+              <SvgText
+                x={pos.x}
+                y={pos.y}
+                fontSize={fontSize}
+                fontWeight={fontWeight}
+                fill={fill}
+                textAnchor="middle"
+                alignmentBaseline="middle"
+              >
+                {label}
+              </SvgText>
+            </G>
+          );
+        })}
+      </G>
+
+      {/* Fixed north indicator at top (12 o'clock) — shows current heading direction */}
+      {!frozen && (
+        <Line
+          x1={center} y1={center - outerRadius + 4}
+          x2={center} y2={center - outerRadius - 6}
+          stroke={colors.primary}
+          strokeWidth={3}
+          strokeLinecap="round"
+        />
+      )}
+    </Svg>
+  );
+}
+
 // ─── Crosshair Reticle ────────────────────────────────────────────────────────
 
 interface CrosshairProps {
   locked: boolean;
+  strokeColor: string;
   size?: number;
 }
 
-function CrosshairReticle({ locked, size = 120 }: CrosshairProps) {
+function CrosshairReticle({ locked, strokeColor, size = 120 }: CrosshairProps) {
   const cx = size / 2;
-  const gap = size * 0.12;    // gap around center dot
-  const arm  = size * 0.25;   // length of each arm
-  const bracket = size * 0.08; // corner bracket length
-  const stroke = locked ? colors.primary : 'rgba(255,255,255,0.85)';
+  const gap = size * 0.12;      // gap around center dot
+  const arm  = size * 0.25;     // length of each arm
+  const bracket = size * 0.08;  // corner bracket length
   const strokeW = locked ? 2.5 : 1.5;
 
   return (
@@ -47,48 +169,36 @@ function CrosshairReticle({ locked, size = 120 }: CrosshairProps) {
         cx={cx}
         cy={cx}
         r={locked ? 5 : 3}
-        fill={stroke}
+        fill={strokeColor}
         opacity={locked ? 1 : 0.9}
       />
 
       {/* Crosshair arms */}
-      {/* Top */}
-      <Line x1={cx} y1={cx - gap} x2={cx} y2={cx - gap - arm} stroke={stroke} strokeWidth={strokeW} />
-      {/* Bottom */}
-      <Line x1={cx} y1={cx + gap} x2={cx} y2={cx + gap + arm} stroke={stroke} strokeWidth={strokeW} />
-      {/* Left */}
-      <Line x1={cx - gap} y1={cx} x2={cx - gap - arm} y2={cx} stroke={stroke} strokeWidth={strokeW} />
-      {/* Right */}
-      <Line x1={cx + gap} y1={cx} x2={cx + gap + arm} y2={cx} stroke={stroke} strokeWidth={strokeW} />
+      <Line x1={cx} y1={cx - gap}       x2={cx} y2={cx - gap - arm}       stroke={strokeColor} strokeWidth={strokeW} />
+      <Line x1={cx} y1={cx + gap}       x2={cx} y2={cx + gap + arm}       stroke={strokeColor} strokeWidth={strokeW} />
+      <Line x1={cx - gap} y1={cx}       x2={cx - gap - arm} y2={cx}       stroke={strokeColor} strokeWidth={strokeW} />
+      <Line x1={cx + gap} y1={cx}       x2={cx + gap + arm} y2={cx}       stroke={strokeColor} strokeWidth={strokeW} />
 
-      {/* Corner brackets (top-left, top-right, bottom-left, bottom-right) */}
+      {/* Corner brackets */}
       {[
-        { ox: -1, oy: -1 }, // TL
-        { ox:  1, oy: -1 }, // TR
-        { ox: -1, oy:  1 }, // BL
-        { ox:  1, oy:  1 }, // BR
+        { ox: -1, oy: -1 },
+        { ox:  1, oy: -1 },
+        { ox: -1, oy:  1 },
+        { ox:  1, oy:  1 },
       ].map(({ ox, oy }, i) => {
         const bx = cx + ox * (size * 0.32);
         const by = cx + oy * (size * 0.32);
         return (
           <G key={i}>
             <Line
-              x1={bx}
-              y1={by}
-              x2={bx + ox * bracket}
-              y2={by}
-              stroke={stroke}
-              strokeWidth={strokeW}
-              opacity={0.6}
+              x1={bx} y1={by}
+              x2={bx + ox * bracket} y2={by}
+              stroke={strokeColor} strokeWidth={strokeW} opacity={0.6}
             />
             <Line
-              x1={bx}
-              y1={by}
-              x2={bx}
-              y2={by + oy * bracket}
-              stroke={stroke}
-              strokeWidth={strokeW}
-              opacity={0.6}
+              x1={bx} y1={by}
+              x2={bx} y2={by + oy * bracket}
+              stroke={strokeColor} strokeWidth={strokeW} opacity={0.6}
             />
           </G>
         );
@@ -100,9 +210,9 @@ function CrosshairReticle({ locked, size = 120 }: CrosshairProps) {
 // ─── Wind Direction Indicator ─────────────────────────────────────────────────
 
 interface WindIndicatorProps {
-  windLabel: string;   // e.g. "NW", "SW"
+  windLabel: string;
   windSpeed: number;
-  unit: string;        // "mph" | "kph"
+  unit: string;
   headTailEffect: 'headwind' | 'tailwind' | 'cross';
 }
 
@@ -129,23 +239,33 @@ function WindIndicator({ windLabel, windSpeed, unit, headTailEffect }: WindIndic
 
 interface LockFireButtonProps {
   locked: boolean;
+  countdown: number | null;   // seconds remaining, null when not locked
   onLock: () => void;
   onFire: () => void;
 }
 
-function LockFireButton({ locked, onLock, onFire }: LockFireButtonProps) {
+function LockFireButton({ locked, countdown, onLock, onFire }: LockFireButtonProps) {
   return (
-    <TouchableOpacity
-      style={[styles.lockFireBtn, locked && styles.lockFireBtnLocked]}
-      onPress={locked ? onFire : onLock}
-      activeOpacity={0.75}
-      accessibilityRole="button"
-      accessibilityLabel={locked ? 'Fire — calculate wind adjustment' : 'Lock target heading'}
-    >
-      <Text style={[styles.lockFireText, locked && styles.lockFireTextLocked]}>
-        {locked ? '▶  FIRE' : '⊕  LOCK TARGET'}
-      </Text>
-    </TouchableOpacity>
+    <View style={styles.lockFireWrapper}>
+      <TouchableOpacity
+        style={[styles.lockFireBtn, locked && styles.lockFireBtnLocked]}
+        onPress={locked ? onFire : onLock}
+        activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel={locked ? 'Fire — calculate wind adjustment' : 'Lock target heading'}
+      >
+        <Text style={[styles.lockFireText, locked && styles.lockFireTextLocked]}>
+          {locked ? '▶  FIRE' : '⊕  LOCK TARGET'}
+        </Text>
+      </TouchableOpacity>
+
+      {/* Auto-unlock countdown */}
+      {locked && countdown !== null && (
+        <Text style={styles.countdownText}>
+          Auto-unlocking in {countdown}s
+        </Text>
+      )}
+    </View>
   );
 }
 
@@ -177,12 +297,12 @@ function PermissionScreen({ onRequest, onDismiss }: PermissionScreenProps) {
 // ─── Main HUD ─────────────────────────────────────────────────────────────────
 
 interface CameraHUDProps {
-  heading: number;           // live compass heading (deg)
-  windDirection: number;     // wind direction (deg, met convention)
+  heading: number;
+  windDirection: number;
   windSpeed: number;
   windSpeedUnit: string;
-  onFire: () => void;        // called when user fires → show results
-  onClose: () => void;       // exit HUD mode
+  onFire: () => void;
+  onClose: () => void;
   isLocked: boolean;
   onLock: () => void;
   onUnlock: () => void;
@@ -201,6 +321,150 @@ export function CameraHUD({
 }: CameraHUDProps) {
   const [permission, requestPermission] = useCameraPermissions();
 
+  // ── Animation refs ────────────────────────────────────────────────────────
+  // Crosshair scale pulse on lock
+  const crosshairScale = React.useRef(new Animated.Value(1)).current;
+  // Full-screen flash opacity on FIRE
+  const flashOpacity = React.useRef(new Animated.Value(0)).current;
+  // Crosshair color: 0 = white, 1 = green (colors.primary)
+  const lockColorProgress = React.useRef(new Animated.Value(0)).current;
+
+  // ── Countdown timer state ─────────────────────────────────────────────────
+  const [countdown, setCountdown] = React.useState<number | null>(null);
+  const countdownInterval = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoUnlockTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Color interpolation (for crosshair stroke, driven via JS) ────────────
+  const [crosshairColor, setCrosshairColor] = React.useState('rgba(255,255,255,0.85)');
+
+  // ── Crosshair pulse animation ─────────────────────────────────────────────
+  const triggerLockPulse = React.useCallback(() => {
+    // Scale: 1 → 1.15 → 1.0 over ~300ms
+    Animated.sequence([
+      Animated.timing(crosshairScale, {
+        toValue: 1.15,
+        duration: 150,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(crosshairScale, {
+        toValue: 1.0,
+        duration: 150,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Color fade white → green over 300ms (JS-driven since SVG props can't use native driver)
+    Animated.timing(lockColorProgress, {
+      toValue: 1,
+      duration: 300,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start();
+
+    lockColorProgress.addListener(({ value }) => {
+      // Interpolate white → colors.primary (#4B9E50)
+      const r = Math.round(255 + (75  - 255) * value);
+      const g = Math.round(255 + (158 - 255) * value);
+      const b = Math.round(255 + (80  - 255) * value);
+      setCrosshairColor(`rgba(${r},${g},${b},${0.85 + 0.15 * value})`);
+    });
+  }, [crosshairScale, lockColorProgress]);
+
+  // Revert crosshair to white on unlock
+  const triggerUnlockReset = React.useCallback(() => {
+    Animated.timing(lockColorProgress, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+
+    lockColorProgress.addListener(({ value }) => {
+      const r = Math.round(255 + (75  - 255) * value);
+      const g = Math.round(255 + (158 - 255) * value);
+      const b = Math.round(255 + (80  - 255) * value);
+      setCrosshairColor(`rgba(${r},${g},${b},${0.85 + 0.15 * value})`);
+    });
+  }, [lockColorProgress]);
+
+  // ── FIRE flash animation ──────────────────────────────────────────────────
+  const triggerFireFlash = React.useCallback((callback: () => void) => {
+    Animated.sequence([
+      Animated.timing(flashOpacity, {
+        toValue: 0.6,
+        duration: 100,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(flashOpacity, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start(() => callback());
+  }, [flashOpacity]);
+
+  // ── Auto-timeout management ───────────────────────────────────────────────
+  const clearAutoUnlock = React.useCallback(() => {
+    if (countdownInterval.current) {
+      clearInterval(countdownInterval.current);
+      countdownInterval.current = null;
+    }
+    if (autoUnlockTimeout.current) {
+      clearTimeout(autoUnlockTimeout.current);
+      autoUnlockTimeout.current = null;
+    }
+    setCountdown(null);
+  }, []);
+
+  const startAutoUnlock = React.useCallback(() => {
+    clearAutoUnlock();
+    setCountdown(AUTO_UNLOCK_SECS);
+
+    // Countdown tick every second
+    let remaining = AUTO_UNLOCK_SECS;
+    countdownInterval.current = setInterval(() => {
+      remaining -= 1;
+      setCountdown(remaining);
+      if (remaining <= 0) {
+        clearAutoUnlock();
+      }
+    }, 1000);
+
+    // Auto-unlock after timeout
+    autoUnlockTimeout.current = setTimeout(() => {
+      clearAutoUnlock();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onUnlock();
+    }, AUTO_UNLOCK_SECS * 1000);
+  }, [clearAutoUnlock, onUnlock]);
+
+  // React to isLocked changes
+  React.useEffect(() => {
+    if (isLocked) {
+      triggerLockPulse();
+      startAutoUnlock();
+    } else {
+      triggerUnlockReset();
+      clearAutoUnlock();
+    }
+    return () => {
+      // Cleanup listeners to avoid memory leaks
+      lockColorProgress.removeAllListeners();
+    };
+  }, [isLocked]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return () => {
+      clearAutoUnlock();
+      lockColorProgress.removeAllListeners();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleLock = React.useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onLock();
@@ -208,15 +472,17 @@ export function CameraHUD({
 
   const handleFire = React.useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onFire();
-  }, [onFire]);
+    clearAutoUnlock();
+    triggerFireFlash(onFire);
+  }, [onFire, triggerFireFlash, clearAutoUnlock]);
 
   const handleUnlock = React.useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    clearAutoUnlock();
     onUnlock();
-  }, [onUnlock]);
+  }, [onUnlock, clearAutoUnlock]);
 
-  // Wind label relative to target heading
+  // ── Wind calculations ─────────────────────────────────────────────────────
   const windAngleRelative = ((windDirection - heading) + 360) % 360;
   const windLabel = (() => {
     if (windAngleRelative < 22.5 || windAngleRelative >= 337.5) return 'N';
@@ -236,21 +502,18 @@ export function CameraHUD({
     return 'cross' as const;
   })();
 
-  // Permission not yet determined
+  // ── Permission gates ──────────────────────────────────────────────────────
   if (!permission) return null;
 
-  // Permission denied — show request screen
   if (!permission.granted) {
     return (
       <View style={styles.hudContainer}>
-        <PermissionScreen
-          onRequest={requestPermission}
-          onDismiss={onClose}
-        />
+        <PermissionScreen onRequest={requestPermission} onDismiss={onClose} />
       </View>
     );
   }
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <View style={styles.hudContainer}>
       {/* Camera background */}
@@ -258,6 +521,15 @@ export function CameraHUD({
 
       {/* Dark vignette overlay for readability */}
       <View style={styles.vignette} pointerEvents="none" />
+
+      {/* ── COMPASS RING OVERLAY ── centered, semi-transparent */}
+      <View style={styles.compassRingContainer} pointerEvents="none">
+        <CompassRingOverlay
+          heading={heading}
+          frozen={isLocked}
+          size={SCREEN_W * 0.72}
+        />
+      </View>
 
       {/* TOP BAR */}
       <View style={styles.topBar}>
@@ -275,9 +547,15 @@ export function CameraHUD({
         </TouchableOpacity>
       </View>
 
-      {/* CROSSHAIR — centered */}
+      {/* CROSSHAIR — centered, animated scale */}
       <View style={styles.crosshairContainer} pointerEvents="none">
-        <CrosshairReticle locked={isLocked} size={140} />
+        <Animated.View style={{ transform: [{ scale: crosshairScale }] }}>
+          <CrosshairReticle
+            locked={isLocked}
+            strokeColor={crosshairColor}
+            size={140}
+          />
+        </Animated.View>
       </View>
 
       {/* WIND INDICATOR — top right */}
@@ -294,6 +572,7 @@ export function CameraHUD({
       <View style={styles.bottomBar}>
         <LockFireButton
           locked={isLocked}
+          countdown={countdown}
           onLock={handleLock}
           onFire={handleFire}
         />
@@ -301,6 +580,12 @@ export function CameraHUD({
           <Text style={styles.aimHint}>Point at your target, then lock</Text>
         )}
       </View>
+
+      {/* ── FIRE FLASH OVERLAY ── full-screen, pointer-events none */}
+      <Animated.View
+        style={[styles.fireFlash, { opacity: flashOpacity }]}
+        pointerEvents="none"
+      />
     </View>
   );
 }
@@ -319,9 +604,19 @@ const styles = StyleSheet.create({
   vignette: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'transparent',
-    // Simulate vignette with semi-transparent edges
     borderWidth: 60,
     borderColor: `rgba(0,0,0,${VIGNETTE_OPACITY})`,
+  },
+
+  // COMPASS RING — centered behind crosshair
+  compassRingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // TOP BAR
@@ -439,6 +734,9 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
+  lockFireWrapper: {
+    alignItems: 'center',
+  },
   lockFireBtn: {
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.5)',
@@ -461,6 +759,13 @@ const styles = StyleSheet.create({
   },
   lockFireTextLocked: {
     color: colors.primary,
+  },
+  countdownText: {
+    color: 'rgba(255,165,0,0.75)',
+    fontSize: 11,
+    marginTop: 8,
+    letterSpacing: 0.3,
+    fontWeight: '500',
   },
   aimHint: {
     color: 'rgba(255,255,255,0.35)',
@@ -510,5 +815,11 @@ const styles = StyleSheet.create({
   permissionDismissText: {
     color: 'rgba(255,255,255,0.4)',
     fontSize: 13,
+  },
+
+  // FIRE FLASH — full-screen white/green overlay
+  fireFlash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#6EFF70',  // green-tinted white flash
   },
 });
