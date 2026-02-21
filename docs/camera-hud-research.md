@@ -282,7 +282,7 @@ The camera is just a background — all interactivity happens in the overlay lay
 
 ## Open Questions
 
-1. **Should HUD mode be landscape-only?** Holding phone sideways is more natural for "aiming at a target" and gives wider FOV. But it's a major layout change.
+1. ~~**Should HUD mode be landscape-only?**~~ **DECIDED: Portrait only.** No landscape support. Keeps layout consistent with rest of app.
 
 2. **Should the crosshair track to a fixed compass heading after lock?** i.e., if you lock at 247°, should the crosshair shift if you move the phone, showing you where 247° actually is? This is true AR behavior but much more complex.
 
