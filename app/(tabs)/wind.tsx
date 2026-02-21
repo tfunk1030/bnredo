@@ -471,8 +471,8 @@ export default function WindScreen() {
         <CameraHUD
           heading={isLocked ? lockedHeading : heading}
           windDirection={weather?.windDirection ?? 0}
-          windSpeed={weather?.windSpeed ?? 0}
-          windSpeedUnit={preferences.windSpeedUnit ?? 'mph'}
+          windSpeed={windSpeedFormat.value}
+          windSpeedUnit={windSpeedFormat.shortLabel}
           isLocked={isLocked}
           onLock={() => {
             setLockedHeading(heading);

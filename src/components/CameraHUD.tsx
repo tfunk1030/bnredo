@@ -20,7 +20,8 @@ import {
   Easing,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import Svg, { Line, Rect, Circle, G, Path, Text as SvgText } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Line, Circle, G, Text as SvgText } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/src/constants/theme';
 
@@ -66,8 +67,8 @@ function CompassRingOverlay({ heading, frozen, size = 260 }: CompassRingOverlayP
     { label: 'NW', angle: 315, major: false },
   ];
 
-  // Generate tick marks around the ring (72 ticks = every 5 degrees)
-  const ticks = Array.from({ length: 72 }, (_, i) => {
+  // Ticks don't change with heading — memoize to avoid regenerating 72 SVG elements per frame
+  const ticks = React.useMemo(() => Array.from({ length: 72 }, (_, i) => {
     const angle = i * 5;
     const isMajor = i % 9 === 0;   // every 45°
     const isMinor = i % 3 === 0;   // every 15°
@@ -83,10 +84,11 @@ function CompassRingOverlay({ heading, frozen, size = 260 }: CompassRingOverlayP
         strokeWidth={isMajor ? 2 : 1}
       />
     );
-  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [size]);
 
-  // Heading to use for rotation — frozen when locked
-  const ringHeading = frozen ? 0 : heading;
+  // Parent passes lockedHeading when frozen — so always use heading as-is
+  const ringHeading = heading;
 
   return (
     <Svg width={size} height={size} opacity={0.65}>
@@ -319,6 +321,7 @@ export function CameraHUD({
   onLock,
   onUnlock,
 }: CameraHUDProps) {
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
 
   // ── Animation refs ────────────────────────────────────────────────────────
@@ -356,36 +359,36 @@ export function CameraHUD({
     ]).start();
 
     // Color fade white → green over 300ms (JS-driven since SVG props can't use native driver)
+    // Remove previous listener before adding new one to prevent accumulation
+    lockColorProgress.removeAllListeners();
+    lockColorProgress.addListener(({ value }) => {
+      const r = Math.round(255 + (75  - 255) * value);
+      const g = Math.round(255 + (158 - 255) * value);
+      const b = Math.round(255 + (80  - 255) * value);
+      setCrosshairColor(`rgba(${r},${g},${b},${0.85 + 0.15 * value})`);
+    });
     Animated.timing(lockColorProgress, {
       toValue: 1,
       duration: 300,
       easing: Easing.out(Easing.quad),
       useNativeDriver: false,
     }).start();
+  }, [crosshairScale, lockColorProgress]);
 
+  // Revert crosshair to white on unlock
+  const triggerUnlockReset = React.useCallback(() => {
+    lockColorProgress.removeAllListeners();
     lockColorProgress.addListener(({ value }) => {
-      // Interpolate white → colors.primary (#4B9E50)
       const r = Math.round(255 + (75  - 255) * value);
       const g = Math.round(255 + (158 - 255) * value);
       const b = Math.round(255 + (80  - 255) * value);
       setCrosshairColor(`rgba(${r},${g},${b},${0.85 + 0.15 * value})`);
     });
-  }, [crosshairScale, lockColorProgress]);
-
-  // Revert crosshair to white on unlock
-  const triggerUnlockReset = React.useCallback(() => {
     Animated.timing(lockColorProgress, {
       toValue: 0,
       duration: 200,
       useNativeDriver: false,
     }).start();
-
-    lockColorProgress.addListener(({ value }) => {
-      const r = Math.round(255 + (75  - 255) * value);
-      const g = Math.round(255 + (158 - 255) * value);
-      const b = Math.round(255 + (80  - 255) * value);
-      setCrosshairColor(`rgba(${r},${g},${b},${0.85 + 0.15 * value})`);
-    });
   }, [lockColorProgress]);
 
   // ── FIRE flash animation ──────────────────────────────────────────────────
@@ -423,13 +426,14 @@ export function CameraHUD({
     clearAutoUnlock();
     setCountdown(AUTO_UNLOCK_SECS);
 
-    // Countdown tick every second
+    // Countdown tick every second — skip 0 to avoid "Auto-unlocking in 0s" flash
     let remaining = AUTO_UNLOCK_SECS;
     countdownInterval.current = setInterval(() => {
       remaining -= 1;
-      setCountdown(remaining);
       if (remaining <= 0) {
         clearAutoUnlock();
+      } else {
+        setCountdown(remaining);
       }
     }, 1000);
 
@@ -532,7 +536,7 @@ export function CameraHUD({
       </View>
 
       {/* TOP BAR */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <View style={styles.hudLabel}>
           <Text style={styles.hudLabelText}>HUD MODE</Text>
           {isLocked && <Text style={styles.hudLockedBadge}>LOCKED</Text>}
@@ -558,8 +562,8 @@ export function CameraHUD({
         </Animated.View>
       </View>
 
-      {/* WIND INDICATOR — top right */}
-      <View style={styles.windIndicatorPos} pointerEvents="none">
+      {/* WIND INDICATOR — top right, clears safe area top bar */}
+      <View style={[styles.windIndicatorPos, { top: insets.top + 68 }]} pointerEvents="none">
         <WindIndicator
           windLabel={windLabel}
           windSpeed={windSpeed}
@@ -629,7 +633,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 16,
     paddingBottom: 12,
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
