@@ -9,6 +9,8 @@
  * Phase 3: Compass ring overlay, lock pulse animation, FIRE flash, auto-timeout countdown.
  * Phase 4: Yardage input in HUD, enhanced crosshair visibility, heading deviation indicator,
  *           visual wind-direction arrow, locked crosshair stays fixed with drift feedback.
+ * Phase 5: Red crosshair (unlocked), compass-based crosshair lock — crosshair stays on target
+ *           bearing as phone pans; edge arrow when target leaves camera view.
  */
 
 import * as React from 'react';
@@ -28,6 +30,12 @@ import * as Haptics from 'expo-haptics';
 import { colors } from '@/src/constants/theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
+
+// ─── Camera FOV estimate ───────────────────────────────────────────────────────
+// Phone main cameras are ~65° horizontal FOV. Half = 32.5°.
+// Used to convert heading delta (degrees) → screen pixel offset for locked crosshair.
+const HALF_FOV_DEG = 32.5;
+const MAX_CROSSHAIR_OFFSET = SCREEN_W * 0.38; // clamp before off-screen
 
 // ─── Auto-timeout constant ─────────────────────────────────────────────────────
 const AUTO_UNLOCK_SECS = 60;
@@ -457,7 +465,8 @@ export function CameraHUD({
   const autoUnlockTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Crosshair color (JS-driven, SVG can't use native driver) ─────────────
-  const [crosshairColor, setCrosshairColor] = React.useState('rgba(255,255,255,1)');
+  // Unlocked = red (#FF3B30), Locked = green (colors.primary)
+  const [crosshairColor, setCrosshairColor] = React.useState('#FF3B30');
 
   // ── Lock pulse ────────────────────────────────────────────────────────────
   const triggerLockPulse = React.useCallback(() => {
@@ -466,11 +475,12 @@ export function CameraHUD({
       Animated.timing(crosshairScale, { toValue: 1.0,  duration: 150, easing: Easing.in(Easing.quad),  useNativeDriver: true }),
     ]).start();
 
+    // Animate: red (#FF3B30 = 255,59,48) → green (#4CAF50 = 76,175,80)
     lockColorProgress.removeAllListeners();
     lockColorProgress.addListener(({ value }) => {
-      const r = Math.round(255 + (75  - 255) * value);
-      const g = Math.round(255 + (175 - 255) * value);
-      const b = Math.round(255 + (80  - 255) * value);
+      const r = Math.round(255 + (76  - 255) * value);
+      const g = Math.round(59  + (175 -  59) * value);
+      const b = Math.round(48  + (80  -  48) * value);
       setCrosshairColor(`rgba(${r},${g},${b},1)`);
     });
     Animated.timing(lockColorProgress, {
@@ -482,11 +492,12 @@ export function CameraHUD({
   }, [crosshairScale, lockColorProgress]);
 
   const triggerUnlockReset = React.useCallback(() => {
+    // Revert: green → red
     lockColorProgress.removeAllListeners();
     lockColorProgress.addListener(({ value }) => {
-      const r = Math.round(255 + (75  - 255) * value);
-      const g = Math.round(255 + (175 - 255) * value);
-      const b = Math.round(255 + (80  - 255) * value);
+      const r = Math.round(255 + (76  - 255) * value);
+      const g = Math.round(59  + (175 -  59) * value);
+      const b = Math.round(48  + (80  -  48) * value);
       setCrosshairColor(`rgba(${r},${g},${b},1)`);
     });
     Animated.timing(lockColorProgress, { toValue: 0, duration: 200, useNativeDriver: false }).start();
@@ -561,6 +572,24 @@ export function CameraHUD({
     return 'cross' as const;
   })();
 
+  // ── Locked crosshair offset ───────────────────────────────────────────────
+  // When locked, offset the crosshair horizontally so it stays on the locked
+  // bearing as the phone pans. Uses compass heading — no ARKit needed.
+  //   delta > 0 = phone turned right → target is LEFT → translateX negative
+  //   delta < 0 = phone turned left  → target is RIGHT → translateX positive
+  const headingDelta = isLocked
+    ? ((heading - lockedHeading) + 540) % 360 - 180  // −180..+180
+    : 0;
+  const crosshairOffsetRaw = isLocked
+    ? -(headingDelta / HALF_FOV_DEG) * (SCREEN_W / 2)
+    : 0;
+  const crosshairOffsetX = Math.max(
+    -MAX_CROSSHAIR_OFFSET,
+    Math.min(MAX_CROSSHAIR_OFFSET, crosshairOffsetRaw)
+  );
+  const targetOffLeft  = isLocked && crosshairOffsetRaw < -MAX_CROSSHAIR_OFFSET;
+  const targetOffRight = isLocked && crosshairOffsetRaw > MAX_CROSSHAIR_OFFSET;
+
   // ── Permission gates ──────────────────────────────────────────────────────
   if (!permission) return null;
 
@@ -614,17 +643,20 @@ export function CameraHUD({
         </TouchableOpacity>
       </View>
 
-      {/* CROSSHAIR — centered, animated scale */}
+      {/* CROSSHAIR — compass-locked: slides to track target bearing after LOCK */}
       <View style={styles.crosshairContainer} pointerEvents="none">
-        <Animated.View style={{ transform: [{ scale: crosshairScale }] }}>
-          <CrosshairReticle
-            locked={isLocked}
-            strokeColor={crosshairColor}
-            size={180}
-          />
-        </Animated.View>
+        {/* Offset wrapper — moves the crosshair based on heading delta */}
+        <View style={{ transform: [{ translateX: crosshairOffsetX }] }}>
+          <Animated.View style={{ transform: [{ scale: crosshairScale }] }}>
+            <CrosshairReticle
+              locked={isLocked}
+              strokeColor={crosshairColor}
+              size={180}
+            />
+          </Animated.View>
+        </View>
 
-        {/* Heading deviation indicator — shown below crosshair when locked */}
+        {/* Deviation text — shown when locked */}
         {isLocked && (
           <View style={styles.deviationContainer}>
             <DeviationIndicator
@@ -634,6 +666,20 @@ export function CameraHUD({
           </View>
         )}
       </View>
+
+      {/* EDGE ARROWS — shown when locked target leaves camera view */}
+      {targetOffLeft && (
+        <View style={[styles.edgeArrow, styles.edgeArrowLeft]} pointerEvents="none">
+          <Text style={styles.edgeArrowText}>◀</Text>
+          <Text style={styles.edgeArrowLabel}>TARGET</Text>
+        </View>
+      )}
+      {targetOffRight && (
+        <View style={[styles.edgeArrow, styles.edgeArrowRight]} pointerEvents="none">
+          <Text style={styles.edgeArrowText}>▶</Text>
+          <Text style={styles.edgeArrowLabel}>TARGET</Text>
+        </View>
+      )}
 
       {/* WIND INDICATOR — top right */}
       <View style={[styles.windIndicatorPos, { top: insets.top + 68 }]} pointerEvents="none">
@@ -897,6 +943,43 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 10,
     letterSpacing: 0.3,
+  },
+
+  // ── EDGE ARROWS (target off-screen) ─────────────────────────────────────
+  edgeArrow: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 52,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingVertical: 12,
+    gap: 4,
+  },
+  edgeArrowLeft: {
+    left: 0,
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(255,59,48,0.4)',
+  },
+  edgeArrowRight: {
+    right: 0,
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255,59,48,0.4)',
+  },
+  edgeArrowText: {
+    color: '#FF3B30',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  edgeArrowLabel: {
+    color: '#FF3B30',
+    fontSize: 8,
+    fontWeight: '700',
+    letterSpacing: 1,
+    transform: [{ rotate: '-90deg' }],
+    width: 50,
+    textAlign: 'center',
   },
 
   // ── PERMISSION SCREEN ────────────────────────────────────────────────────
