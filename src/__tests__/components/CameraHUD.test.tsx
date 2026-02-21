@@ -239,62 +239,50 @@ describe('CameraHUD — wind display', () => {
   });
 });
 
-// ─── Yardage Selector ─────────────────────────────────────────────────────────
+// ─── Yardage Slider ───────────────────────────────────────────────────────────
 
-describe('CameraHUD — YardageSelector', () => {
+describe('CameraHUD — yardage slider', () => {
   beforeEach(() => { mockPermission = { granted: true }; });
-
-  it('renders HUD toggle button', () => {
-    const { getByText } = renderHUD();
-    expect(getByText('HUD MODE')).toBeTruthy();
-  });
 
   it('displays target yardage value', () => {
     const { getByText } = renderHUD({ targetYardage: 175 });
-    expect(getByText('175')).toBeTruthy();
+    expect(getByText(/175/)).toBeTruthy();
   });
 
   it('shows yds unit label', () => {
     const { getByText } = renderHUD({ targetYardage: 150 });
-    expect(getByText('yds')).toBeTruthy();
+    expect(getByText(/yds/)).toBeTruthy();
   });
 
-  it('renders decrease yardage button', () => {
+  it('renders yardage slider', () => {
+    const { getByTestId } = renderHUD();
+    expect(getByTestId('yardage-slider')).toBeTruthy();
+  });
+
+  it('slider has correct min/max values', () => {
+    const { getByTestId } = renderHUD();
+    const slider = getByTestId('yardage-slider');
+    expect(slider.props.minimumValue).toBe(50);
+    expect(slider.props.maximumValue).toBe(400);
+  });
+
+  it('slider value reflects targetYardage prop', () => {
+    const { getByTestId } = renderHUD({ targetYardage: 225 });
+    const slider = getByTestId('yardage-slider');
+    expect(slider.props.value).toBe(225);
+  });
+
+  it('calls onYardageChange when slider value changes', () => {
+    const onYardageChange = jest.fn();
+    const { getByTestId } = renderHUD({ onYardageChange });
+    fireEvent(getByTestId('yardage-slider'), 'valueChange', 200);
+    expect(onYardageChange).toHaveBeenCalledWith(200);
+  });
+
+  it('shows range labels 50 and 400', () => {
     const { getByText } = renderHUD();
-    expect(getByText('−')).toBeTruthy();
-  });
-
-  it('renders increase yardage button', () => {
-    const { getByText } = renderHUD();
-    expect(getByText('+')).toBeTruthy();
-  });
-
-  it('calls onYardageChange with yards - 5 when decrement pressed', () => {
-    const onYardageChange = jest.fn();
-    const { getByText } = renderHUD({ targetYardage: 150, onYardageChange });
-    fireEvent.press(getByText('−'));
-    expect(onYardageChange).toHaveBeenCalledWith(145);
-  });
-
-  it('calls onYardageChange with yards + 5 when increment pressed', () => {
-    const onYardageChange = jest.fn();
-    const { getByText } = renderHUD({ targetYardage: 150, onYardageChange });
-    fireEvent.press(getByText('+'));
-    expect(onYardageChange).toHaveBeenCalledWith(155);
-  });
-
-  it('clamps minimum yardage at 50', () => {
-    const onYardageChange = jest.fn();
-    const { getByText } = renderHUD({ targetYardage: 50, onYardageChange });
-    fireEvent.press(getByText('−'));
-    expect(onYardageChange).toHaveBeenCalledWith(50);
-  });
-
-  it('clamps maximum yardage at 400', () => {
-    const onYardageChange = jest.fn();
-    const { getByText } = renderHUD({ targetYardage: 400, onYardageChange });
-    fireEvent.press(getByText('+'));
-    expect(onYardageChange).toHaveBeenCalledWith(400);
+    expect(getByText('50')).toBeTruthy();
+    expect(getByText('400')).toBeTruthy();
   });
 });
 

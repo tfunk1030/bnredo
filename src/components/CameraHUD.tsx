@@ -23,11 +23,13 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Circle, G, Text as SvgText, Polygon } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/src/constants/theme';
+import { useHapticSlider } from '@/src/hooks/useHapticSlider';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -39,54 +41,6 @@ const MAX_CROSSHAIR_OFFSET = SCREEN_W * 0.38; // clamp before off-screen
 
 // ─── Auto-timeout constant ─────────────────────────────────────────────────────
 const AUTO_UNLOCK_SECS = 60;
-
-// ─── Yardage Selector ─────────────────────────────────────────────────────────
-
-interface YardageSelectorProps {
-  yards: number;
-  onChange: (y: number) => void;
-  unit: string;
-}
-
-function YardageSelector({ yards, onChange, unit }: YardageSelectorProps) {
-  const step = 5;
-
-  const decrement = () => {
-    Haptics.selectionAsync();
-    onChange(Math.max(50, yards - step));
-  };
-  const increment = () => {
-    Haptics.selectionAsync();
-    onChange(Math.min(400, yards + step));
-  };
-
-  return (
-    <View style={styles.yardsRow} accessibilityLabel={`Target yardage: ${yards} ${unit}`}>
-      <TouchableOpacity
-        style={styles.yardsBtn}
-        onPress={decrement}
-        accessibilityLabel="Decrease yardage"
-        hitSlop={{ top: 10, bottom: 10, left: 12, right: 8 }}
-      >
-        <Text style={styles.yardsBtnText}>−</Text>
-      </TouchableOpacity>
-
-      <View style={styles.yardsCenter}>
-        <Text style={styles.yardsValue}>{yards}</Text>
-        <Text style={styles.yardsUnit}>{unit}</Text>
-      </View>
-
-      <TouchableOpacity
-        style={styles.yardsBtn}
-        onPress={increment}
-        accessibilityLabel="Increase yardage"
-        hitSlop={{ top: 10, bottom: 10, left: 8, right: 12 }}
-      >
-        <Text style={styles.yardsBtnText}>+</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
 
 // ─── Compass Ring HUD Overlay ─────────────────────────────────────────────────
 
@@ -453,6 +407,7 @@ export function CameraHUD({
 }: CameraHUDProps) {
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
+  const { onValueChange: onSliderHaptic } = useHapticSlider({ interval: 5 });
 
   // ── Animation refs ────────────────────────────────────────────────────────
   const crosshairScale    = React.useRef(new Animated.Value(1)).current;
@@ -619,19 +574,12 @@ export function CameraHUD({
         />
       </View>
 
-      {/* TOP BAR — HUD MODE label | yardage stepper | close */}
+      {/* TOP BAR */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <View style={styles.hudLabel}>
           <Text style={styles.hudLabelText}>HUD MODE</Text>
           {isLocked && <Text style={styles.hudLockedBadge}>LOCKED</Text>}
         </View>
-
-        {/* Yardage Selector — center of top bar */}
-        <YardageSelector
-          yards={targetYardage}
-          onChange={onYardageChange}
-          unit={windSpeedUnit === 'mph' ? 'yds' : 'm'}
-        />
 
         <TouchableOpacity
           style={styles.closeBtn}
@@ -692,8 +640,35 @@ export function CameraHUD({
         />
       </View>
 
-      {/* BOTTOM — lock/fire button + aiming hint */}
-      <View style={styles.bottomBar}>
+      {/* BOTTOM — yardage slider + lock/fire button */}
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 20 }]}>
+        {/* Yardage display + slider */}
+        <View style={styles.yardSliderContainer}>
+          <Text style={styles.yardSliderValue}>
+            {targetYardage}
+            <Text style={styles.yardSliderUnit}> {windSpeedUnit === 'mph' ? 'yds' : 'm'}</Text>
+          </Text>
+          <View style={styles.yardSliderRow}>
+            <Text style={styles.yardRangeLabel}>50</Text>
+            <Slider
+              testID="yardage-slider"
+              style={styles.yardSlider}
+              value={targetYardage}
+              minimumValue={50}
+              maximumValue={400}
+              step={1}
+              onValueChange={(v) => {
+                onSliderHaptic(v);
+                onYardageChange(Math.round(v));
+              }}
+              minimumTrackTintColor={colors.primary}
+              maximumTrackTintColor="rgba(255,255,255,0.2)"
+              thumbTintColor={colors.primary}
+            />
+            <Text style={styles.yardRangeLabel}>400</Text>
+          </View>
+        </View>
+
         <LockFireButton
           locked={isLocked}
           countdown={countdown}
@@ -745,13 +720,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 10,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   hudLabel: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    minWidth: 80,
   },
   hudLabelText: {
     color: colors.primary,
@@ -787,48 +761,42 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ── YARDAGE SELECTOR ─────────────────────────────────────────────────────
-  yardsRow: {
+  // ── YARDAGE SLIDER (bottom of HUD) ───────────────────────────────────────
+  yardSliderContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+  yardSliderValue: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: '700',
+    lineHeight: 38,
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  yardSliderUnit: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  yardSliderRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 8,
-    paddingVertical: 4,
-    paddingHorizontal: 6,
   },
-  yardsBtn: {
-    width: 30,
-    height: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 15,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+  yardSlider: {
+    flex: 1,
+    height: 40,
   },
-  yardsBtnText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '300',
-    lineHeight: 24,
-  },
-  yardsCenter: {
-    alignItems: 'center',
-    minWidth: 58,
-  },
-  yardsValue: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '700',
-    lineHeight: 26,
-  },
-  yardsUnit: {
-    color: colors.primary,
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    lineHeight: 13,
+  yardRangeLabel: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 11,
+    fontWeight: '500',
+    minWidth: 28,
+    textAlign: 'center',
   },
 
   // ── CROSSHAIR ────────────────────────────────────────────────────────────
@@ -905,9 +873,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
     alignItems: 'center',
-    paddingBottom: 48,
-    paddingTop: 24,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingTop: 20,
+    paddingBottom: 48,  // overridden in JSX with insets.bottom
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
   },
   lockFireWrapper: { alignItems: 'center' },
   lockFireBtn: {
