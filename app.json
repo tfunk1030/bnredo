@@ -21,7 +21,8 @@
         "NSLocationWhenInUseUsageDescription": "AICaddy Pro uses your location to get local weather conditions for accurate shot calculations.",
         "NSMotionUsageDescription": "AICaddy Pro uses your device compass to detect the direction you're aiming at for wind-adjusted shot calculations.",
         "UIBackgroundModes": [],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "AICaddy Pro uses your camera for the HUD wind overlay \u2014 point at the flag to see wind-adjusted data over a live view. No photos or video are saved."
       }
     },
     "android": {

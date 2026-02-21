@@ -15,7 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Lock, Wind, Navigation, Target, Minus, Plus, AlertCircle, Edit3, Check, X } from 'lucide-react-native';
+import { Lock, Wind, Navigation, Target, Minus, Plus, AlertCircle, Edit3, Check, X, Camera } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, borderRadius, typography, touchTargets, glass, cardGradient } from '@/src/constants/theme';
 import { SceneBackground } from '@/src/components/ui';
@@ -24,6 +24,7 @@ import { useUserPreferences } from '@/src/contexts/UserPreferencesContext';
 import { getWindDirectionLabel } from '@/src/services/weather/utils';
 import { WindResultsModal } from '@/src/components/WindResultsModal';
 import { CompassDisplay } from '@/src/components/CompassDisplay';
+import { CameraHUD } from '@/src/components/CameraHUD';
 import { useCompassHeading } from '@/src/hooks/useCompassHeading';
 import { useHapticSlider } from '@/src/hooks/useHapticSlider';
 import { formatWindSpeed, formatDistance } from '@/src/utils/unit-conversions';
@@ -38,6 +39,7 @@ export default function WindScreen() {
   const [lockedHeading, setLockedHeading] = React.useState(0);
   const [showResults, setShowResults] = React.useState(false);
   const [targetYardage, setTargetYardage] = React.useState(150);
+  const [hudMode, setHudMode] = React.useState(false);
 
   // Manual wind input state
   const [showManualInput, setShowManualInput] = React.useState(false);
@@ -233,6 +235,20 @@ export default function WindScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* HUD TOGGLE */}
+        <View style={styles.hudToggleRow}>
+          <TouchableOpacity
+            style={styles.hudToggleBtn}
+            onPress={() => setHudMode(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Switch to camera HUD mode"
+            accessibilityHint="Opens full-screen camera view with wind overlay"
+          >
+            <Camera color={colors.primary} size={16} />
+            <Text style={styles.hudToggleBtnText}>HUD</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.compassSection}>
           <CompassDisplay
             heading={heading}
@@ -449,6 +465,31 @@ export default function WindScreen() {
         targetYardage={targetYardage}
         windAngle={windAngleRelativeToTarget}
       />
+
+      {/* CAMERA HUD OVERLAY */}
+      {hudMode && (
+        <CameraHUD
+          heading={isLocked ? lockedHeading : heading}
+          windDirection={weather?.windDirection ?? 0}
+          windSpeed={weather?.windSpeed ?? 0}
+          windSpeedUnit={preferences.windSpeedUnit ?? 'mph'}
+          isLocked={isLocked}
+          onLock={() => {
+            setLockedHeading(heading);
+            setIsLocked(true);
+          }}
+          onUnlock={() => {
+            setIsLocked(false);
+          }}
+          onFire={() => {
+            setShowResults(true);
+          }}
+          onClose={() => {
+            setHudMode(false);
+            setIsLocked(false);
+          }}
+        />
+      )}
     </SceneBackground>
   );
 }
@@ -457,6 +498,33 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+
+  // HUD MODE TOGGLE
+  hudToggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  hudToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: `${colors.primary}18`,
+  },
+  hudToggleBtnText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+
   screenTitle: {
     color: colors.text,
     fontSize: 22,
