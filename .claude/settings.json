@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx prettier --write \"$CLAUDE_FILE_PATH\" 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_FILE_PATH\" | grep -qE '(\\.env|package-lock\\.json|eas\\.json)$' && echo '{\"decision\":\"block\",\"reason\":\"Protected file - edit manually\"}' || echo '{\"decision\":\"allow\"}'"
+          }
+        ]
+      }
+    ]
+  }
+}
