@@ -51,27 +51,34 @@ A toggle on the Wind screen that switches from the current card-based layout to 
 ### Visual Design (Fighter Pilot HUD)
 
 ```
-┌──────────────────────────────────────┐
-│  [LIVE CAMERA FEED - FULL SCREEN]    │
-│                                       │
-│                                       │
-│         ┌─── Compass Ring ───┐       │
-│         │                     │       │
-│         │    ╋ (crosshair)    │       │
-│         │    ↗ wind arrow     │       │
-│         │                     │       │
-│         └─────────────────────┘       │
-│                                       │
-│     ┌─── PLAYS LIKE: 162 YDS ───┐    │
-│     └────────────────────────────┘    │
-│                                       │
-│                                       │
-│         [ LOCK TARGET ]               │
-│                                       │
-└──────────────────────────────────────┘
+  AIMING STATE                          LOCKED STATE
+┌──────────────────────┐           ┌──────────────────────┐
+│  [CAMERA FEED]       │           │  [CAMERA FEED]       │
+│                      │           │                      │
+│    ┌── Compass ──┐   │           │    ┌── Compass ──┐   │
+│    │              │   │           │    │   (frozen)   │   │
+│    │  ╋ crosshair │   │           │    │  ╋ LOCKED    │   │
+│    │  ↗ wind      │   │           │    │  ↗ wind      │   │
+│    │              │   │           │    │              │   │
+│    └──────────────┘   │           │    └──────────────┘   │
+│                      │           │                      │
+│                      │           │                      │
+│   [ LOCK TARGET ]    │           │   [ ▶ FIRE ]         │
+│                      │    tap    │                      │
+└──────────────────────┘   ──→     └──────────────────────┘
+                                           │ tap
+                                           ▼
+                                   ┌──────────────────────┐
+                                   │  💥 FIRE animation   │
+                                   │  (flash / pulse)     │
+                                   │                      │
+                                   │  → transitions to    │
+                                   │  WindResultsModal    │
+                                   │  (existing screen)   │
+                                   └──────────────────────┘
 ```
 
-**On screen: crosshair, compass, wind arrow, Plays Like, lock button. Nothing else.**
+**On HUD: crosshair, compass, wind arrow, lock/fire button. Zero data. All results on existing results screen.**
 
 ### Key Elements
 
@@ -81,13 +88,15 @@ A toggle on the Wind screen that switches from the current card-based layout to 
 
 3. **Wind vector arrow** — shows wind direction relative to target (headwind, crosswind, quartering). Color-coded: green (helping), red (hurting), yellow (cross).
 
-4. **"Plays Like" hero number** — large text overlay (72px+) showing adjusted yardage. This is the killer feature — the reference app doesn't have this. You see the flag AND the adjusted distance simultaneously.
+4. **"LOCK & FIRE" button** — bottom center. This is the core interaction:
+   - **State 1 (Aiming):** Crosshair active, compass spinning, button says "LOCK TARGET"
+   - **State 2 (Locked):** User taps → crosshair locks, heading freezes, button morphs to "FIRE" with a charging/ready animation
+   - **State 3 (Fire):** User taps FIRE → screen animates (flash, zoom, reticle pulse) → transitions to the **existing results screen** (WindResultsModal) with all the calculated data
+   - This keeps the HUD clean (no Plays Like number floating on camera) and reuses the results screen we already built
 
-5. **Lock/Calculate button** — bottom center, same logic as current. When locked, crosshair turns solid, heading freezes, "Plays Like" number appears. Clean, single action.
+5. **No data on the HUD screen.** No Plays Like, no data pills, no bottom strip. The camera view is PURE targeting: crosshair, compass, wind arrow, and the lock/fire button. All results show on the existing results screen after firing.
 
-6. **No data pills / bottom strip.** Keep it pure fighter-pilot. The only data on screen is the crosshair, compass ring, wind arrow, and Plays Like number. Everything else lives in card mode.
-
-7. **Monochrome/green tint filter** — camera feed slightly desaturated with a green tint to match brand aesthetic and improve overlay contrast. Not required — test with and without.
+6. **Monochrome/green tint filter** — camera feed slightly desaturated with a green tint to match brand aesthetic and improve overlay contrast. Not required — test with and without.
 
 ### Mode Toggle
 
@@ -123,11 +132,11 @@ WindScreen (wind.tsx)
 └── HUDMode (new)
     ├── CameraView (expo-camera)
     ├── HUDOverlay (absolutely positioned View)
-    │   ├── CrosshairReticle (SVG)
-    │   ├── CompassRing (SVG, rotates with heading)
-    │   ├── WindVectorArrow (SVG)
-    │   └── PlaysLikeDisplay (Text overlay)
-    └── LockTargetButton
+    │   ├── CrosshairReticle (SVG — pulses on lock)
+    │   ├── CompassRing (SVG — rotates with heading, freezes on lock)
+    │   └── WindVectorArrow (SVG)
+    ├── LockFireButton (LOCK TARGET → FIRE state machine)
+    └── WindResultsModal (existing — opens on FIRE)
 ```
 
 ### Data Flow
@@ -261,14 +270,15 @@ The camera is just a background — all interactivity happens in the overlay lay
 - Validate the concept before investing in polish
 
 ### Phase 3: Full HUD (3-5 days)
-- Fighter-pilot crosshair reticle (detailed SVG)
-- Compass ring overlay (adapted from current CompassDisplay)
+- Fighter-pilot crosshair reticle (detailed SVG, pulses/glows on lock)
+- Compass ring overlay (adapted from current CompassDisplay, freezes on lock)
 - Wind vector arrow
-- "Plays Like" hero number overlay
-- Lock/Calculate button with haptic feedback
-- Auto-timeout (60s)
+- **LOCK → FIRE two-stage button** with haptic feedback on each tap
+- FIRE animation (screen flash, reticle pulse, zoom transition)
+- Transition to existing WindResultsModal on fire
+- Auto-timeout (60s back to aiming if no fire)
 - Battery-aware (show warning if <20%)
-- **No data pills, no bottom strip — pure fighter-pilot aesthetic**
+- **Zero data on HUD — pure fighter-pilot. All results on existing results screen.**
 
 ### Phase 4: Polish & Gate (2-3 days)
 - Green tint / monochrome camera filter
