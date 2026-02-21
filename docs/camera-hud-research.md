@@ -284,7 +284,7 @@ The camera is just a background — all interactivity happens in the overlay lay
 
 1. ~~**Should HUD mode be landscape-only?**~~ **DECIDED: Portrait only.** No landscape support. Keeps layout consistent with rest of app.
 
-2. **Should the crosshair track to a fixed compass heading after lock?** i.e., if you lock at 247°, should the crosshair shift if you move the phone, showing you where 247° actually is? This is true AR behavior but much more complex.
+2. ~~**Should the crosshair track to a fixed compass heading after lock?**~~ **DECIDED: Fixed center.** Crosshair stays locked to screen center. User points phone at target. No AR world-tracking.
 
 3. **Night/low-light mode?** Camera feed in dark conditions is useless. Auto-fallback to card mode?
 
